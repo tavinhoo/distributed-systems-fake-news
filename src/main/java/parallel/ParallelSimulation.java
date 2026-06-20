@@ -36,7 +36,6 @@ public class ParallelSimulation {
                 threads[index].start();
             }
 
-            // A proxima geracao so inicia depois que todas as threads terminarem.
             for (Thread thread : threads) {
                 thread.join();
             }

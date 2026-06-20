@@ -81,17 +81,44 @@ src/main/java/
     `-- Timer.java
 ```
 
-## Versao sequencial
+## Modos de processamento
+
+As tres versoes seguem a mesma regra de atualizacao por geracoes: a matriz atual (`currentGrid`) e usada apenas para leitura, e a proxima matriz (`nextGrid`) recebe os novos estados. Ao final de cada geracao, a versao em execucao troca a referencia da matriz atual pela matriz calculada.
+
+Essa separacao e importante porque evita interferencia dentro da mesma geracao. Uma celula atualizada no inicio da varredura nao altera o resultado de outra celula que ainda sera calculada naquela mesma geracao.
+
+### Versao sequencial
 
 `SequentialSimulation` percorre toda a matriz em uma unica thread. Ela serve como base de comparacao para tempo, speedup e eficiencia.
 
-## Versao paralela
+Funcionamento:
+
+1. Cria uma matriz auxiliar `nextGrid`.
+2. Percorre todas as linhas e colunas em ordem.
+3. Para cada celula, chama `SimulationRules.nextState(...)`.
+4. Registra estatisticas como neutralizacoes por influencia do `GROK`.
+5. Ao final da geracao, troca `currentGrid` e `nextGrid`.
+
+Por nao ter concorrencia, essa versao e a referencia de corretude das demais.
+
+### Versao paralela
 
 `ParallelSimulation` divide a matriz por faixas de linhas. Cada `MatrixWorker` implementa `Runnable` e calcula apenas a sua faixa.
 
 Como as threads leem somente `currentGrid` e escrevem somente na sua parte de `nextGrid`, nao ha escrita concorrente na mesma celula. A thread principal chama `join()` em todas as threads antes de trocar `currentGrid` por `nextGrid`, garantindo que uma nova geracao so comece quando a anterior terminou.
 
-## Versao distribuida
+Funcionamento:
+
+1. Define a quantidade de threads.
+2. Divide as linhas da matriz em intervalos aproximadamente iguais.
+3. Cada thread calcula sua faixa de linhas em `nextGrid`.
+4. A thread principal espera todas terminarem com `join()`.
+5. As estatisticas parciais dos workers sao somadas.
+6. Ao final, a matriz calculada passa a ser a matriz atual.
+
+Esse modo tende a se beneficiar em matrizes maiores, quando o custo de criar e sincronizar threads fica menor que o ganho de dividir o trabalho.
+
+### Versao distribuida
 
 `DistributedSimulation` usa Java RMI para distribuir o calculo entre workers. Cada worker recebe uma faixa de linhas da matriz, junto com as linhas fantasmas superior e inferior quando elas existem. Essas linhas extras permitem calcular corretamente a vizinhanca de Moore nas fronteiras entre faixas.
 
@@ -102,6 +129,17 @@ Como as threads leem somente `currentGrid` e escrevem somente na sua parte de `n
 - `WorkerServer`: processo que cria o RMI Registry e registra um worker.
 
 O coordenador espera todos os workers devolverem suas faixas antes de montar a proxima matriz. Assim, uma nova geracao so comeca depois que a geracao anterior terminou em todos os processos.
+
+Funcionamento:
+
+1. O coordenador divide a matriz em faixas de linhas, uma para cada worker.
+2. Para cada faixa, monta um `WorkerTask` serializavel.
+3. O bloco enviado inclui linhas fantasmas quando necessario, para preservar a vizinhanca nas bordas.
+4. Cada worker RMI calcula localmente sua parte da nova geracao.
+5. O worker retorna um `WorkerResult` com as linhas calculadas e estatisticas parciais.
+6. O coordenador monta a matriz completa a partir dos resultados recebidos.
+
+A versao distribuida tem custo adicional de serializacao, chamada remota e transferencia de blocos da matriz. Em execucao local ou em matrizes pequenas, esse custo pode superar o ganho de paralelismo. Em cenarios maiores ou com workers em maquinas separadas, ela representa melhor a proposta de distribuicao do trabalho.
 
 ## Pre-requisitos
 
@@ -142,7 +180,12 @@ Executar interface grafica JavaFX:
 mvn javafx:run
 ```
 
-A interface grafica mostra uma grade da simulacao e permite alternar entre os modos `Sequencial`, `Paralela` e `Distribuida RMI`. Ela serve para demonstracao visual da propagacao; os resultados experimentais devem ser gerados pelo `BenchmarkRunner`.
+A interface grafica mostra uma grade da simulacao e permite alternar entre os modos `Sequencial`, `Paralela` e `Distribuida RMI`. Ela tambem possui dois modos de execucao:
+
+- `Visual`: executa a simulacao acompanhando a animacao JavaFX.
+- `Benchmark`: executa a simulacao sem esperar a transicao visual entre frames, medindo o algoritmo com menor interferencia da interface.
+
+Para resultados experimentais completos, use o `BenchmarkRunner`. Para inspecao visual e demonstracao, use a interface JavaFX.
 
 ## Como executar com javac
 
@@ -226,6 +269,25 @@ Em maquinas diferentes, troque `127.0.0.1` pelo IP da maquina onde cada worker e
 - contagens finais de todos os estados;
 - validacao de consistencia entre as versoes.
 
+### Benchmark na interface JavaFX
+
+A interface grafica tambem possui um modo `Benchmark`. Ele foi criado porque a animacao JavaFX tem um limite pratico: no modo visual, cada geracao e disparada por um `Timeline` com intervalo fixo. Isso e adequado para demonstrar a propagacao, mas nao representa apenas o tempo de processamento.
+
+Por exemplo, se a interface executa 100 geracoes com um frame a cada 180 ms, o tempo visual fica proximo de 18 segundos mesmo que o processamento sequencial, paralelo ou distribuido termine muito antes. Nesse caso, o tempo medido passa a refletir a cadencia da animacao, nao o custo real do algoritmo.
+
+Por isso a interface separa:
+
+- `Visual`: mede e mostra a experiencia completa da animacao, incluindo o ritmo do JavaFX.
+- `Benchmark`: roda as geracoes em segundo plano, sem aguardar a transicao visual entre frames, e atualiza a interface ao final.
+
+No painel final da interface:
+
+- `Tempo visual`: tempo percebido na execucao animada.
+- `Tempo total benchmark`: tempo da execucao em modo benchmark.
+- `Tempo medido do algoritmo`: soma do tempo gasto calculando as geracoes.
+
+Essa separacao evita comparar a versao paralela contra a sequencial usando um gargalo que pertence ao desenho da tela.
+
 Executar benchmark rapido com 4 threads, 2 workers RMI locais e porta inicial 9100:
 
 ```bash
@@ -306,10 +368,14 @@ As melhorias implementadas no modelo foram:
 - `WHATSAPP_GROUP`: representa grupo ativo que aumenta o alcance da fake news quando existe espalhador por perto, podendo crescer ou desaparecer.
 - `INFLUENCER`: representa perfil de grande alcance, ampliando a propagacao em raio maior, podendo surgir ou perder relevancia.
 - Propagacao probabilistica: evita que a fake news domine toda a matriz instantaneamente.
-- Interface grafica JavaFX: permite visualizar a evolucao da simulacao.
+- Interface grafica JavaFX: permite visualizar a evolucao da simulacao com painel de estados, resultados e grafico.
+- Separacao entre modo visual e modo benchmark na interface: evita misturar o tempo de animacao do JavaFX com o tempo real de processamento.
+- Renderizacao da matriz em `Canvas`: reduz o custo da interface ao evitar um componente JavaFX por celula.
+- Zoom e pan na matriz: melhora a leitura de matrizes grandes sem alterar o tamanho real do problema.
+- Agregacao automatica de blocos: em zoom baixo, varios estados sao resumidos em uma cor representativa para manter a visualizacao legivel.
 - Benchmark em lote: automatiza a geracao de dados experimentais para comparacao.
 
-Essas melhorias se enquadram nos criterios de inovacao por adicionarem resistencia, agentes de amplificacao social, visualizacao grafica, estatisticas adicionais e comparacao automatizada.
+Essas melhorias se enquadram nos criterios de inovacao por adicionarem resistencia, agentes de amplificacao social, visualizacao grafica, estatisticas adicionais, comparacao automatizada e uma interface adequada para demonstracao sem comprometer a leitura dos resultados de desempenho.
 
 ## Interface grafica
 
@@ -322,10 +388,43 @@ mvn javafx:run
 A interface mostra:
 
 - grade da simulacao;
-- legenda por cor;
 - contadores por estado;
 - progresso da simulacao;
 - tempo e uso de memoria ao final.
+- grafico da evolucao dos estados;
+- modo visual e modo benchmark.
+
+### Visualizacao da matriz
+
+A matriz e renderizada em `Canvas`. Nao sao criados `Rectangle` ou outros componentes JavaFX por celula, porque uma matriz 500x500 teria 250.000 elementos visuais, o que degradaria a interface.
+
+Para preservar desempenho e legibilidade, a visualizacao usa:
+
+- **zoom** com a roda do mouse sobre a matriz;
+- **pan** arrastando a matriz com o mouse;
+- **duplo clique** para voltar ao zoom inicial;
+- **agregacao automatica de blocos** em zoom baixo;
+- **renderizacao de celulas individuais** em zoom alto.
+
+Quando o zoom esta baixo, muitas celulas reais cabem em poucos pixels. Nessa situacao, a interface agrupa blocos da matriz e desenha uma cor representativa para o bloco. Quando o zoom aumenta e ha espaco suficiente para distinguir as celulas, a interface passa a desenhar celula por celula.
+
+Essa estrategia permite ver o padrao geral da propagacao em matrizes grandes e, ao mesmo tempo, inspecionar regioes especificas com mais detalhe.
+
+### Modos da interface
+
+`Visual`:
+
+- usa o `Timeline` do JavaFX;
+- atualiza a matriz e o grafico a cada geracao;
+- e indicado para apresentacao e acompanhamento da propagacao;
+- o tempo total inclui a cadencia dos frames da interface.
+
+`Benchmark`:
+
+- executa as geracoes em uma tarefa de segundo plano;
+- nao espera a transicao visual entre geracoes;
+- atualiza a matriz e o grafico ao final;
+- e indicado para comparar os modos de processamento dentro da propria interface.
 
 Tela inicial da interface:
 
