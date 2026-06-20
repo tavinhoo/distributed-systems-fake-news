@@ -10,6 +10,8 @@ Cada posicao da matriz representa uma pessoa. Os estados possiveis sao:
 - `SPREADER`: acredita e compartilha a informacao.
 - `INACTIVE`: recebeu a informacao, mas nao compartilha mais.
 - `GROK`: agente verificador que combate a fake news.
+- `WHATSAPP_GROUP`: grupo ativo que amplia a propagacao ao redor.
+- `INFLUENCER`: perfil de grande alcance que amplia ainda mais a propagacao.
 
 A simulacao acontece em geracoes discretas. Em cada geracao, o programa le a matriz atual (`currentGrid`) e escreve o resultado na proxima matriz (`nextGrid`). Isso evita que uma celula atualizada no inicio da varredura influencie outra celula na mesma geracao.
 
@@ -17,22 +19,28 @@ A simulacao acontece em geracoes discretas. Em cada geracao, o programa le a mat
 
 - A vizinhanca usada e a de Moore: ate 8 vizinhos ao redor de uma celula.
 - Uma pessoa `IGNORANT` pode virar `SPREADER` se tiver pelo menos um vizinho `SPREADER`, usando uma probabilidade configuravel.
-- Uma pessoa `SPREADER` pode virar `INACTIVE`, usando uma probabilidade configuravel.
+- Uma pessoa `SPREADER` pode virar `INACTIVE`, mas tambem pode continuar espalhando por mais geracoes.
 - Uma pessoa `INACTIVE` permanece `INACTIVE`.
 - Uma pessoa `GROK` permanece `GROK` durante toda a simulacao.
-- Se um `SPREADER` tiver pelo menos um `GROK` na vizinhanca, ele pode virar `INACTIVE` por correcao/verificacao.
-- Se um `IGNORANT` tiver vizinhos `SPREADER` e `GROK` ao mesmo tempo, a chance de virar `SPREADER` e reduzida.
+- O estado `GROK` representa uma pessoa resistente/imune: ela nao vira `SPREADER`.
+- Um `WHATSAPP_GROUP` permanece fixo e nao cria fake news sozinho.
+- Um `INFLUENCER` permanece fixo e nao cria fake news sozinho.
+- Se um `IGNORANT` estiver perto de um `WHATSAPP_GROUP`, um `SPREADER` em raio 2 pode influencia-lo com chance maior.
+- Se um `IGNORANT` estiver perto de um `INFLUENCER`, um `SPREADER` em raio 3 pode influencia-lo com chance ainda maior.
 - A seed fica em `SimulationConfig`, permitindo repetir a mesma configuracao inicial.
 
-Para manter as versoes comparaveis, a aleatoriedade das regras e calculada de forma deterministica com base em seed, geracao, linha, coluna e regra aplicada.
+Todas as versoes calculam a proxima geracao lendo apenas a matriz atual e escrevendo em outra matriz. Assim, uma celula atualizada nao influencia outra celula dentro da mesma geracao.
 
-As configuracoes principais do agente `GROK` ficam em `SimulationConfig`:
+As configuracoes principais ficam em `SimulationConfig`:
 
+- tamanho da matriz;
+- numero de geracoes;
+- percentual inicial de espalhadores;
 - `initialGrokPercentage`: percentual inicial de agentes verificadores.
-- `grokCorrectionProbability`: chance de um `GROK` vizinho neutralizar um `SPREADER`.
-- `grokInfluenceReductionFactor`: fator que reduz a chance de um `IGNORANT` acreditar na fake news quando tambem ha `GROK` por perto.
+- `initialWhatsAppGroupPercentage`: percentual inicial de grupos de WhatsApp.
+- `initialInfluencerPercentage`: percentual inicial de influenciadores.
 
-No cenario padrao, a influencia do `GROK` e limitada: ele reduz a propagacao, mas nao elimina automaticamente a fake news. Isso mantem o modelo equilibrado para comparacao experimental.
+No cenario padrao, o `GROK` funciona como uma melhoria simples do modelo: individuos resistentes permanecem imunes durante toda a simulacao. Os grupos de WhatsApp e influenciadores tornam o cenario mais pessimista, pois aumentam o alcance da fake news quando ha espalhadores por perto. As probabilidades foram ajustadas para evitar uma propagacao instantanea: a fake news circula por mais tempo, mas ainda pode perder forca ao longo das geracoes.
 
 ## Arquitetura
 
@@ -162,7 +170,7 @@ Se o plugin `exec-maven-plugin` nao estiver configurado no ambiente, use a execu
 - `speedup = tempoSequencial / tempoVersao`;
 - `eficiencia = speedup / numeroDeThreadsOuWorkers`;
 - quantidade final de `GROK`;
-- total de espalhadores neutralizados por influencia de `GROK`.
+- total de neutralizacoes por `GROK` quando houver regra especifica para isso.
 
 Executar benchmark rapido com 4 threads, 2 workers RMI locais e porta inicial 9100:
 

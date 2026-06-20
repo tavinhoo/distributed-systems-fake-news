@@ -62,15 +62,15 @@ public class BenchmarkRunner {
 
         Scenario[] scenarios = {
                 new Scenario("base_80x80", new SimulationConfig(80, 80, 100, 0.02, 0.03,
-                        0.35, 0.15, 0.25, 0.50, 42L), new int[]{2, 4}, new int[]{2}),
+                        0.015, 0.01, 0.25, 0.50, 42L), new int[]{2, 4}, new int[]{2}),
                 new Scenario("matriz_120x120", new SimulationConfig(120, 120, 100, 0.02, 0.03,
-                        0.35, 0.15, 0.25, 0.50, 42L), new int[]{4}, new int[]{2}),
+                        0.015, 0.01, 0.25, 0.50, 42L), new int[]{4}, new int[]{2}),
                 new Scenario("geracoes_200", new SimulationConfig(80, 80, 200, 0.02, 0.03,
-                        0.35, 0.15, 0.25, 0.50, 42L), new int[]{4}, new int[]{2}),
+                        0.015, 0.01, 0.25, 0.50, 42L), new int[]{4}, new int[]{2}),
                 new Scenario("espalhadores_5pct", new SimulationConfig(80, 80, 100, 0.05, 0.03,
-                        0.35, 0.15, 0.25, 0.50, 42L), new int[]{4}, new int[]{2}),
+                        0.015, 0.01, 0.25, 0.50, 42L), new int[]{4}, new int[]{2}),
                 new Scenario("workers_1_2_4", new SimulationConfig(80, 80, 100, 0.02, 0.03,
-                        0.35, 0.15, 0.25, 0.50, 42L), new int[]{4}, new int[]{1, 2, 4})
+                        0.015, 0.01, 0.25, 0.50, 42L), new int[]{4}, new int[]{1, 2, 4})
         };
 
         int maxWorkers = maxWorkerCount(scenarios);
@@ -91,7 +91,7 @@ public class BenchmarkRunner {
 
     private static void warmUp(int basePort) throws Exception {
         SimulationConfig config = new SimulationConfig(30, 30, 20, 0.02, 0.03,
-                0.35, 0.15, 0.25, 0.50, 42L);
+                0.015, 0.01, 0.25, 0.50, 42L);
 
         new SequentialSimulation().run(GridFactory.createInitialGrid(config), config);
         new ParallelSimulation(2).run(GridFactory.createInitialGrid(config), config);
@@ -185,7 +185,8 @@ public class BenchmarkRunner {
                 config.getRows(), config.getColumns(), config.getGenerations(),
                 config.getInitialSpreaderRate(), units, totalMillis, speedup, efficiency,
                 result.getIgnorantCount(), result.getSpreaderCount(), result.getInactiveCount(),
-                result.getGrokCount(), result.getNeutralizedByGrokCount());
+                result.getGrokCount(), result.getWhatsAppGroupCount(), result.getInfluencerCount(),
+                result.getNeutralizedByGrokCount());
     }
 
     private static void writeEnvironmentFile() throws Exception {
@@ -219,6 +220,8 @@ public class BenchmarkRunner {
                 && expected.getSpreaderCount() == current.getSpreaderCount()
                 && expected.getInactiveCount() == current.getInactiveCount()
                 && expected.getGrokCount() == current.getGrokCount()
+                && expected.getWhatsAppGroupCount() == current.getWhatsAppGroupCount()
+                && expected.getInfluencerCount() == current.getInfluencerCount()
                 && expected.getNeutralizedByGrokCount() == current.getNeutralizedByGrokCount();
 
         if (!same) {
@@ -236,12 +239,14 @@ public class BenchmarkRunner {
 
         System.out.println();
         System.out.println("Comparacao social sequencial:");
-        System.out.printf("Com GROK:    IGNORANT=%d, SPREADER=%d, INACTIVE=%d, GROK=%d, neutralizados=%d%n",
+        System.out.printf("Com GROK:    IGNORANT=%d, SPREADER=%d, INACTIVE=%d, GROK=%d, WHATSAPP=%d, INFLUENCER=%d, neutralizados=%d%n",
                 withGrok.getIgnorantCount(), withGrok.getSpreaderCount(), withGrok.getInactiveCount(),
-                withGrok.getGrokCount(), withGrok.getNeutralizedByGrokCount());
-        System.out.printf("Sem GROK:    IGNORANT=%d, SPREADER=%d, INACTIVE=%d, GROK=%d, neutralizados=%d%n",
+                withGrok.getGrokCount(), withGrok.getWhatsAppGroupCount(), withGrok.getInfluencerCount(),
+                withGrok.getNeutralizedByGrokCount());
+        System.out.printf("Sem GROK:    IGNORANT=%d, SPREADER=%d, INACTIVE=%d, GROK=%d, WHATSAPP=%d, INFLUENCER=%d, neutralizados=%d%n",
                 noGrok.getIgnorantCount(), noGrok.getSpreaderCount(), noGrok.getInactiveCount(),
-                noGrok.getGrokCount(), noGrok.getNeutralizedByGrokCount());
+                noGrok.getGrokCount(), noGrok.getWhatsAppGroupCount(), noGrok.getInfluencerCount(),
+                noGrok.getNeutralizedByGrokCount());
     }
 
     private record Scenario(String name,

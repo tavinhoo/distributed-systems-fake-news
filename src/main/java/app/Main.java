@@ -34,9 +34,10 @@ public class Main {
     private static void printResult(String mode, SimulationResult result) {
         System.out.println("Modo: " + mode);
         System.out.printf("Tempo total: %.3f ms%n", Timer.toMillis(result.getElapsedNanos()));
-        System.out.printf("IGNORANT=%d, SPREADER=%d, INACTIVE=%d, GROK=%d%n",
+        System.out.printf("IGNORANT=%d, SPREADER=%d, INACTIVE=%d, GROK=%d, WHATSAPP=%d, INFLUENCER=%d%n",
                 result.getIgnorantCount(), result.getSpreaderCount(),
-                result.getInactiveCount(), result.getGrokCount());
+                result.getInactiveCount(), result.getGrokCount(),
+                result.getWhatsAppGroupCount(), result.getInfluencerCount());
         System.out.println("Neutralizados por influencia GROK: " + result.getNeutralizedByGrokCount());
     }
 

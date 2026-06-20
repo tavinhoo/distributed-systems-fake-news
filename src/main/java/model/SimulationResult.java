@@ -8,6 +8,8 @@ public class SimulationResult {
     private final int spreaderCount;
     private final int inactiveCount;
     private final int grokCount;
+    private final int whatsAppGroupCount;
+    private final int influencerCount;
     private final int neutralizedByGrokCount;
 
     public SimulationResult(CellState[][] finalGrid,
@@ -17,6 +19,8 @@ public class SimulationResult {
                             int spreaderCount,
                             int inactiveCount,
                             int grokCount,
+                            int whatsAppGroupCount,
+                            int influencerCount,
                             int neutralizedByGrokCount) {
         this.finalGrid = finalGrid;
         this.generations = generations;
@@ -25,6 +29,8 @@ public class SimulationResult {
         this.spreaderCount = spreaderCount;
         this.inactiveCount = inactiveCount;
         this.grokCount = grokCount;
+        this.whatsAppGroupCount = whatsAppGroupCount;
+        this.influencerCount = influencerCount;
         this.neutralizedByGrokCount = neutralizedByGrokCount;
     }
 
@@ -54,6 +60,14 @@ public class SimulationResult {
 
     public int getGrokCount() {
         return grokCount;
+    }
+
+    public int getWhatsAppGroupCount() {
+        return whatsAppGroupCount;
+    }
+
+    public int getInfluencerCount() {
+        return influencerCount;
     }
 
     public int getNeutralizedByGrokCount() {

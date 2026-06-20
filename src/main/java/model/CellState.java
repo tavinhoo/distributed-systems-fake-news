@@ -6,5 +6,7 @@ public enum CellState implements Serializable {
     IGNORANT,
     SPREADER,
     INACTIVE,
-    GROK
+    GROK,
+    WHATSAPP_GROUP,
+    INFLUENCER
 }

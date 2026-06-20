@@ -18,7 +18,17 @@ public class GridFactory {
                 double chance = random.nextDouble();
                 if (chance < config.getInitialGrokPercentage()) {
                     grid[row][col] = CellState.GROK;
-                } else if (chance < config.getInitialGrokPercentage() + config.getInitialSpreaderRate()) {
+                } else if (chance < config.getInitialGrokPercentage()
+                        + config.getInitialWhatsAppGroupPercentage()) {
+                    grid[row][col] = CellState.WHATSAPP_GROUP;
+                } else if (chance < config.getInitialGrokPercentage()
+                        + config.getInitialWhatsAppGroupPercentage()
+                        + config.getInitialInfluencerPercentage()) {
+                    grid[row][col] = CellState.INFLUENCER;
+                } else if (chance < config.getInitialGrokPercentage()
+                        + config.getInitialWhatsAppGroupPercentage()
+                        + config.getInitialInfluencerPercentage()
+                        + config.getInitialSpreaderRate()) {
                     grid[row][col] = CellState.SPREADER;
                 } else {
                     grid[row][col] = CellState.IGNORANT;

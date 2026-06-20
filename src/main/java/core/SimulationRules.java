@@ -6,6 +6,11 @@ import model.SimulationConfig;
 import java.util.Random;
 
 public class SimulationRules {
+    public static final int MAX_INFLUENCE_RADIUS = 3;
+    private static final double WHATSAPP_SPREAD_BONUS = 0.05;
+    private static final double INFLUENCER_SPREAD_BONUS = 0.12;
+    private static final double MAX_SPREAD_PROBABILITY = 0.27;
+
     private SimulationRules() {
     }
 
@@ -25,30 +30,24 @@ public class SimulationRules {
                                       int randomRow) {
         CellState current = grid[row][col];
 
-        if (current == CellState.INACTIVE || current == CellState.GROK) {
+        if (current == CellState.GROK
+                || current == CellState.WHATSAPP_GROUP
+                || current == CellState.INFLUENCER) {
             return current;
+        }
+
+        if (current == CellState.INACTIVE) {
+            return CellState.INACTIVE;
         }
 
         if (current == CellState.SPREADER) {
             double chance = deterministicRandom(config.getSeed(), generation, randomRow, col, 1);
-            if (chance < config.getInactiveProbability()) {
-                return CellState.INACTIVE;
-            }
-
-            if (hasGrokNeighbor(grid, row, col) && isNeutralizedByGrok(generation, config, randomRow, col)) {
-                return CellState.INACTIVE;
-            }
-
-            return CellState.SPREADER;
+            return chance < config.getInactiveProbability() ? CellState.INACTIVE : CellState.SPREADER;
         }
 
-        if (hasSpreaderNeighbor(grid, row, col)) {
+        double spreadProbability = spreadProbability(grid, row, col, config);
+        if (spreadProbability > 0) {
             double chance = deterministicRandom(config.getSeed(), generation, randomRow, col, 2);
-            double spreadProbability = config.getSpreadProbability();
-            if (hasGrokNeighbor(grid, row, col)) {
-                spreadProbability *= config.getGrokInfluenceReductionFactor();
-            }
-
             return chance < spreadProbability ? CellState.SPREADER : CellState.IGNORANT;
         }
 
@@ -69,29 +68,53 @@ public class SimulationRules {
                                                int generation,
                                                SimulationConfig config,
                                                int randomRow) {
-        if (grid[row][col] != CellState.SPREADER || !hasGrokNeighbor(grid, row, col)) {
-            return false;
-        }
-
-        double naturalInactiveChance = deterministicRandom(config.getSeed(), generation, randomRow, col, 1);
-        if (naturalInactiveChance < config.getInactiveProbability()) {
-            return false;
-        }
-
-        return isNeutralizedByGrok(generation, config, randomRow, col);
+        return false;
     }
 
     private static boolean hasSpreaderNeighbor(CellState[][] grid, int row, int col) {
-        return hasNeighborWithState(grid, row, col, CellState.SPREADER);
+        return hasNeighborWithState(grid, row, col, CellState.SPREADER, 1);
     }
 
-    private static boolean hasGrokNeighbor(CellState[][] grid, int row, int col) {
-        return hasNeighborWithState(grid, row, col, CellState.GROK);
+    private static double spreadProbability(CellState[][] grid,
+                                            int row,
+                                            int col,
+                                            SimulationConfig config) {
+        boolean directSpreader = hasSpreaderNeighbor(grid, row, col);
+        boolean whatsAppBoost = isInfluencedByWhatsAppGroup(grid, row, col);
+        boolean influencerBoost = isInfluencedByInfluencer(grid, row, col);
+
+        if (!directSpreader && !whatsAppBoost && !influencerBoost) {
+            return 0.0;
+        }
+
+        double probability = config.getSpreadProbability();
+        if (whatsAppBoost) {
+            probability += WHATSAPP_SPREAD_BONUS;
+        }
+        if (influencerBoost) {
+            probability += INFLUENCER_SPREAD_BONUS;
+        }
+
+        return Math.min(MAX_SPREAD_PROBABILITY, probability);
     }
 
-    private static boolean hasNeighborWithState(CellState[][] grid, int row, int col, CellState expectedState) {
-        for (int deltaRow = -1; deltaRow <= 1; deltaRow++) {
-            for (int deltaCol = -1; deltaCol <= 1; deltaCol++) {
+    private static boolean isInfluencedByWhatsAppGroup(CellState[][] grid, int row, int col) {
+        return hasNeighborWithState(grid, row, col, CellState.WHATSAPP_GROUP, 1)
+                && hasNeighborWithState(grid, row, col, CellState.SPREADER, 2);
+    }
+
+    private static boolean isInfluencedByInfluencer(CellState[][] grid, int row, int col) {
+        return hasNeighborWithState(grid, row, col, CellState.INFLUENCER, 2)
+                && hasNeighborWithState(grid, row, col, CellState.SPREADER, 3);
+    }
+
+    private static boolean hasNeighborWithState(CellState[][] grid,
+                                                int row,
+                                                int col,
+                                                CellState expectedState,
+                                                int radius) {
+        for (int deltaRow = -radius; deltaRow <= radius; deltaRow++) {
+            for (int deltaCol = -radius; deltaCol <= radius; deltaCol++) {
                 if (deltaRow == 0 && deltaCol == 0) {
                     continue;
                 }
@@ -109,14 +132,6 @@ public class SimulationRules {
 
     private static boolean isInside(CellState[][] grid, int row, int col) {
         return row >= 0 && row < grid.length && col >= 0 && col < grid[0].length;
-    }
-
-    private static boolean isNeutralizedByGrok(int generation,
-                                               SimulationConfig config,
-                                               int row,
-                                               int col) {
-        double chance = deterministicRandom(config.getSeed(), generation, row, col, 3);
-        return chance < config.getGrokCorrectionProbability();
     }
 
     private static double deterministicRandom(long seed, int generation, int row, int col, int ruleId) {

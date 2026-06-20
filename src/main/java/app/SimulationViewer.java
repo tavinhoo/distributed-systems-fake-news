@@ -49,6 +49,8 @@ public class SimulationViewer extends Application {
     private final Label spreaderLabel = new Label();
     private final Label inactiveLabel = new Label();
     private final Label grokLabel = new Label();
+    private final Label whatsAppGroupLabel = new Label();
+    private final Label influencerLabel = new Label();
     private final Label progressPercentLabel = new Label("0%");
     private final Label resultModeLabel = new Label("-");
     private final Label resultTimeLabel = new Label("-");
@@ -113,11 +115,15 @@ public class SimulationViewer extends Application {
                 counterItem(spreaderLabel, colorOf(CellState.SPREADER)),
                 counterItem(inactiveLabel, colorOf(CellState.INACTIVE)),
                 counterItem(grokLabel, colorOf(CellState.GROK)),
+                counterItem(whatsAppGroupLabel, colorOf(CellState.WHATSAPP_GROUP)),
+                counterItem(influencerLabel, colorOf(CellState.INFLUENCER)),
                 sectionTitle("Legenda"),
                 legendItem("Ignorante", colorOf(CellState.IGNORANT)),
                 legendItem("Espalhador", colorOf(CellState.SPREADER)),
                 legendItem("Inativo", colorOf(CellState.INACTIVE)),
                 legendItem("GROK", colorOf(CellState.GROK)),
+                legendItem("Grupo WhatsApp", colorOf(CellState.WHATSAPP_GROUP)),
+                legendItem("Influenciador", colorOf(CellState.INFLUENCER)),
                 sectionTitle("Resultado final"),
                 resultModeLabel,
                 resultTimeLabel,
@@ -162,7 +168,7 @@ public class SimulationViewer extends Application {
         generation = 0;
         runStartNanos = 0;
         config = new SimulationConfig(ROWS, COLUMNS, GENERATIONS, 0.03, 0.03,
-                0.35, 0.15, 0.25, 0.50, 42L);
+                0.015, 0.01, 0.25, 0.50, 42L);
         currentGrid = GridFactory.createInitialGrid(config);
         runButton.setText("Iniciar");
         clearResults();
@@ -307,6 +313,12 @@ public class SimulationViewer extends Application {
         if (state == CellState.GROK) {
             return Color.web("#00e676");
         }
+        if (state == CellState.WHATSAPP_GROUP) {
+            return Color.web("#ffab00");
+        }
+        if (state == CellState.INFLUENCER) {
+            return Color.web("#d500f9");
+        }
         return Color.web("#111111");
     }
 
@@ -345,6 +357,8 @@ public class SimulationViewer extends Application {
         int spreader = 0;
         int inactive = 0;
         int grok = 0;
+        int whatsAppGroup = 0;
+        int influencer = 0;
 
         for (CellState[] row : currentGrid) {
             for (CellState state : row) {
@@ -354,8 +368,12 @@ public class SimulationViewer extends Application {
                     spreader++;
                 } else if (state == CellState.INACTIVE) {
                     inactive++;
-                } else {
+                } else if (state == CellState.GROK) {
                     grok++;
+                } else if (state == CellState.WHATSAPP_GROUP) {
+                    whatsAppGroup++;
+                } else {
+                    influencer++;
                 }
             }
         }
@@ -367,6 +385,8 @@ public class SimulationViewer extends Application {
         spreaderLabel.setText("Espalhadores: " + spreader);
         inactiveLabel.setText("Inativos: " + inactive);
         grokLabel.setText("GROK: " + grok);
+        whatsAppGroupLabel.setText("Grupos WhatsApp: " + whatsAppGroup);
+        influencerLabel.setText("Influenciadores: " + influencer);
         progressBar.setProgress((double) generation / config.getGenerations());
         progressPercentLabel.setText(String.format("%.0f%%", 100.0 * generation / config.getGenerations()));
     }

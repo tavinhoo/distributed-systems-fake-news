@@ -1,6 +1,7 @@
 package distributed;
 
 import core.GridFactory;
+import core.SimulationRules;
 import core.Statistics;
 import model.CellState;
 import model.SimulationConfig;
@@ -29,9 +30,10 @@ public class DistributedSimulation {
 
         SimulationResult result = new DistributedSimulation(addresses).run(initialGrid, config);
         System.out.printf("Distribuida concluida em %.3f ms%n", Timer.toMillis(result.getElapsedNanos()));
-        System.out.printf("IGNORANT=%d, SPREADER=%d, INACTIVE=%d, GROK=%d%n",
+        System.out.printf("IGNORANT=%d, SPREADER=%d, INACTIVE=%d, GROK=%d, WHATSAPP=%d, INFLUENCER=%d%n",
                 result.getIgnorantCount(), result.getSpreaderCount(),
-                result.getInactiveCount(), result.getGrokCount());
+                result.getInactiveCount(), result.getGrokCount(),
+                result.getWhatsAppGroupCount(), result.getInfluencerCount());
         System.out.println("Neutralizados por influencia GROK: " + result.getNeutralizedByGrokCount());
     }
 
@@ -137,8 +139,8 @@ public class DistributedSimulation {
                                   int generation,
                                   int startRow,
                                   int endRow) {
-        int ghostStart = Math.max(0, startRow - 1);
-        int ghostEnd = Math.min(config.getRows(), endRow + 1);
+        int ghostStart = Math.max(0, startRow - SimulationRules.MAX_INFLUENCE_RADIUS);
+        int ghostEnd = Math.min(config.getRows(), endRow + SimulationRules.MAX_INFLUENCE_RADIUS);
         CellState[][] block = new CellState[ghostEnd - ghostStart][config.getColumns()];
 
         for (int row = ghostStart; row < ghostEnd; row++) {

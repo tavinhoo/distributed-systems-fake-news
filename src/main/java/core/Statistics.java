@@ -15,6 +15,8 @@ public class Statistics {
         int spreader = 0;
         int inactive = 0;
         int grok = 0;
+        int whatsAppGroup = 0;
+        int influencer = 0;
 
         for (CellState[] row : grid) {
             for (CellState state : row) {
@@ -24,13 +26,17 @@ public class Statistics {
                     spreader++;
                 } else if (state == CellState.INACTIVE) {
                     inactive++;
-                } else {
+                } else if (state == CellState.GROK) {
                     grok++;
+                } else if (state == CellState.WHATSAPP_GROUP) {
+                    whatsAppGroup++;
+                } else {
+                    influencer++;
                 }
             }
         }
 
         return new SimulationResult(grid, generations, elapsedNanos,
-                ignorant, spreader, inactive, grok, neutralizedByGrok);
+                ignorant, spreader, inactive, grok, whatsAppGroup, influencer, neutralizedByGrok);
     }
 }
