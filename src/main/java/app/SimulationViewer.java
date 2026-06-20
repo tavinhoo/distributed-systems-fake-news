@@ -40,9 +40,9 @@ import java.util.Comparator;
 import java.util.List;
 
 public class SimulationViewer extends Application {
-    private static final int ROWS = 400;
-    private static final int COLUMNS = 400;
-    private static final int GENERATIONS = 100;
+    private static final int ROWS = 100;
+    private static final int COLUMNS = 100;
+    private static final int GENERATIONS = 50;
     private static final int THREADS = 12;
     private static final int RMI_WORKERS = 2;
     private static final int RMI_BASE_PORT = 9600;
