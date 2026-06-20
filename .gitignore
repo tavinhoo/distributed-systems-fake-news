@@ -1,7 +1,6 @@
 target/
 out/
 benchmark-results.csv
-src/main/java/distributed/
 
 .idea/
 !.mvn/wrapper/maven-wrapper.jar

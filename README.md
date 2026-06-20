@@ -1,4 +1,4 @@
-# Projeto Fake News em Sistemas Paralelos
+# Projeto Fake News em Sistemas Paralelos e Distribuidos
 
 Projeto academico simples em Java para simular a propagacao de fake news em uma populacao representada por uma matriz bidimensional.
 
@@ -54,6 +54,13 @@ src/main/java/
 |-- parallel/
 |   |-- ParallelSimulation.java
 |   `-- MatrixWorker.java
+|-- distributed/
+|   |-- DistributedSimulation.java
+|   |-- MatrixWorkerImpl.java
+|   |-- MatrixWorkerRemote.java
+|   |-- WorkerResult.java
+|   |-- WorkerServer.java
+|   `-- WorkerTask.java
 `-- util/
     |-- CsvWriter.java
     `-- Timer.java
@@ -68,6 +75,18 @@ src/main/java/
 `ParallelSimulation` divide a matriz por faixas de linhas. Cada `MatrixWorker` implementa `Runnable` e calcula apenas a sua faixa.
 
 Como as threads leem somente `currentGrid` e escrevem somente na sua parte de `nextGrid`, nao ha escrita concorrente na mesma celula. A thread principal chama `join()` em todas as threads antes de trocar `currentGrid` por `nextGrid`, garantindo que uma nova geracao so comece quando a anterior terminou.
+
+## Versao distribuida
+
+`DistributedSimulation` usa Java RMI para distribuir o calculo entre workers. Cada worker recebe uma faixa de linhas da matriz, junto com as linhas fantasmas superior e inferior quando elas existem. Essas linhas extras permitem calcular corretamente a vizinhanca de Moore nas fronteiras entre faixas.
+
+- `MatrixWorkerRemote`: interface remota RMI.
+- `MatrixWorkerImpl`: implementacao remota que calcula uma faixa de linhas.
+- `WorkerTask`: objeto serializavel enviado ao worker com o bloco da matriz, geracao e indices.
+- `WorkerResult`: objeto serializavel devolvido com as linhas calculadas.
+- `WorkerServer`: processo que cria o RMI Registry e registra um worker.
+
+O coordenador espera todos os workers devolverem suas faixas antes de montar a proxima matriz. Assim, uma nova geracao so comeca depois que a geracao anterior terminou em todos os processos.
 
 ## Como executar pelo terminal
 
@@ -95,6 +114,22 @@ Executar versao paralela com 4 threads:
 java -cp out app.Main parallel 4
 ```
 
+Executar workers RMI em terminais separados:
+
+```bash
+java -cp out distributed.WorkerServer 9100 worker
+```
+
+```bash
+java -cp out distributed.WorkerServer 9101 worker
+```
+
+Executar a versao distribuida apontando para os workers:
+
+```bash
+java -cp out app.Main distributed 127.0.0.1:9100:worker 127.0.0.1:9101:worker
+```
+
 ## Como executar com Maven
 
 O projeto tambem possui um `pom.xml` simples. Para compilar:
@@ -113,19 +148,21 @@ Se o plugin `exec-maven-plugin` nao estiver configurado no ambiente, use a execu
 
 ## Benchmark
 
-`BenchmarkRunner` executa as versoes sequencial e paralela, mede o tempo com `System.nanoTime()` e calcula:
+`BenchmarkRunner` executa as versoes sequencial, paralela e distribuida, mede o tempo com `System.nanoTime()` e calcula:
 
 - tempo total;
 - `speedup = tempoSequencial / tempoVersao`;
-- `eficiencia = speedup / numeroDeThreads`;
+- `eficiencia = speedup / numeroDeThreadsOuWorkers`;
 - quantidade final de `GROK`;
 - total de espalhadores neutralizados por influencia de `GROK`.
 
-Executar benchmark com 4 threads:
+Executar benchmark com 4 threads, 2 workers RMI locais e porta inicial 9100:
 
 ```bash
-java -cp out app.BenchmarkRunner 4
+java -cp out app.BenchmarkRunner 4 2 9100
 ```
+
+Os argumentos sao opcionais e seguem esta ordem: `threads`, `workers`, `basePort`. O benchmark sobe os workers RMI locais automaticamente, executa a simulacao distribuida e depois encerra os objetos RMI.
 
 O benchmark gera o arquivo:
 
@@ -143,12 +180,15 @@ Exemplo de saida esperada:
 ```text
 Sequencial   tempo=   80.500 ms | speedup= 1.000 | eficiencia= 1.000 | unidades=1
 Paralela     tempo=   35.200 ms | speedup= 2.287 | eficiencia= 0.572 | unidades=4
+Distribuida  tempo= 1240.421 ms | speedup= 0.065 | eficiencia= 0.033 | unidades=2
 CSV gerado em: benchmark-results.csv
 
 Comparacao social sequencial:
 Com GROK:    IGNORANT=34, SPREADER=0, INACTIVE=6174, GROK=192, neutralizados=543
 Sem GROK:    IGNORANT=0, SPREADER=0, INACTIVE=6400, GROK=0, neutralizados=0
 ```
+
+A versao distribuida pode ser mais lenta em matrizes pequenas, porque ha custo de chamada remota e transferencia de blocos da matriz a cada geracao. Esse comportamento e esperado e deve ser discutido na analise de custo de comunicacao e limitacoes.
 
 ## IntelliJ
 

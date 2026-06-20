@@ -1,6 +1,9 @@
 package app;
 
 import core.GridFactory;
+import distributed.DistributedSimulation;
+import distributed.MatrixWorkerImpl;
+import distributed.WorkerServer;
 import model.CellState;
 import model.SimulationConfig;
 import model.SimulationResult;
@@ -9,10 +12,18 @@ import sequential.SequentialSimulation;
 import util.CsvWriter;
 import util.Timer;
 
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
+import java.util.List;
+
 public class BenchmarkRunner {
     public static void main(String[] args) throws Exception {
         SimulationConfig config = SimulationConfig.defaultConfig();
         int threads = args.length > 0 ? Integer.parseInt(args[0]) : 4;
+        int workers = args.length > 1 ? Integer.parseInt(args[1]) : 2;
+        int basePort = args.length > 2 ? Integer.parseInt(args[2]) : 9100;
         String csvFile = "benchmark-results.csv";
 
         CsvWriter.writeBenchmarkHeader(csvFile);
@@ -28,8 +39,38 @@ public class BenchmarkRunner {
         validateSameCounts("Paralela", sequential, parallel);
         writeComparedResult(csvFile, "Paralela", sequential, parallel, threads);
 
+        List<LocalWorker> localWorkers = startLocalWorkers(workers, basePort);
+        try {
+            CellState[][] distributedInitial = GridFactory.createInitialGrid(config);
+            SimulationResult distributed = new DistributedSimulation(
+                    DistributedSimulation.localWorkers(workers, basePort)).run(distributedInitial, config);
+            validateSameCounts("Distribuida", sequential, distributed);
+            writeComparedResult(csvFile, "Distribuida", sequential, distributed, workers);
+        } finally {
+            stopLocalWorkers(localWorkers);
+        }
+
         System.out.println("CSV gerado em: " + csvFile);
         compareWithAndWithoutGrok(config);
+    }
+
+    private static List<LocalWorker> startLocalWorkers(int workerCount, int basePort) throws Exception {
+        List<LocalWorker> workers = new ArrayList<>();
+        for (int index = 0; index < workerCount; index++) {
+            Registry registry = LocateRegistry.createRegistry(basePort + index);
+            MatrixWorkerImpl worker = new MatrixWorkerImpl();
+            registry.rebind(WorkerServer.DEFAULT_WORKER_NAME, worker);
+            workers.add(new LocalWorker(registry, worker));
+        }
+        return workers;
+    }
+
+    private static void stopLocalWorkers(List<LocalWorker> workers) throws Exception {
+        for (LocalWorker worker : workers) {
+            worker.registry().unbind(WorkerServer.DEFAULT_WORKER_NAME);
+            UnicastRemoteObject.unexportObject(worker.remote(), true);
+            UnicastRemoteObject.unexportObject(worker.registry(), true);
+        }
     }
 
     private static void writeComparedResult(String csvFile,
@@ -97,5 +138,8 @@ public class BenchmarkRunner {
         System.out.printf("Sem GROK:    IGNORANT=%d, SPREADER=%d, INACTIVE=%d, GROK=%d, neutralizados=%d%n",
                 noGrok.getIgnorantCount(), noGrok.getSpreaderCount(), noGrok.getInactiveCount(),
                 noGrok.getGrokCount(), noGrok.getNeutralizedByGrokCount());
+    }
+
+    private record LocalWorker(Registry registry, MatrixWorkerImpl remote) {
     }
 }
