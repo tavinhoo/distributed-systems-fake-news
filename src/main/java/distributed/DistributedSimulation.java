@@ -48,28 +48,42 @@ public class DistributedSimulation {
         timer.start();
 
         CellState[][] currentGrid = initialGrid;
-        CellState[][] nextGrid = new CellState[config.getRows()][config.getColumns()];
         int neutralizedByGrok = 0;
 
         for (int generation = 0; generation < config.getGenerations(); generation++) {
             List<WorkerResult> results = sendGenerationTasks(currentGrid, config, generation);
-
-            for (WorkerResult result : results) {
-                neutralizedByGrok += result.getNeutralizedByGrok();
-                CellState[][] rows = result.getComputedRows();
-                for (int localRow = 0; localRow < rows.length; localRow++) {
-                    System.arraycopy(rows[localRow], 0,
-                            nextGrid[result.getStartRow() + localRow], 0,
-                            config.getColumns());
-                }
-            }
-
-            CellState[][] temp = currentGrid;
-            currentGrid = nextGrid;
-            nextGrid = temp;
+            neutralizedByGrok += countNeutralized(results);
+            currentGrid = assembleNextGrid(results, config);
         }
 
         return Statistics.buildResult(currentGrid, config.getGenerations(), timer.elapsedNanos(), neutralizedByGrok);
+    }
+
+    public CellState[][] nextGeneration(CellState[][] currentGrid,
+                                        SimulationConfig config,
+                                        int generation) throws Exception {
+        return assembleNextGrid(sendGenerationTasks(currentGrid, config, generation), config);
+    }
+
+    private int countNeutralized(List<WorkerResult> results) {
+        int total = 0;
+        for (WorkerResult result : results) {
+            total += result.getNeutralizedByGrok();
+        }
+        return total;
+    }
+
+    private CellState[][] assembleNextGrid(List<WorkerResult> results, SimulationConfig config) {
+        CellState[][] nextGrid = new CellState[config.getRows()][config.getColumns()];
+        for (WorkerResult result : results) {
+            CellState[][] rows = result.getComputedRows();
+            for (int localRow = 0; localRow < rows.length; localRow++) {
+                System.arraycopy(rows[localRow], 0,
+                        nextGrid[result.getStartRow() + localRow], 0,
+                        config.getColumns());
+            }
+        }
+        return nextGrid;
     }
 
     private List<WorkerResult> sendGenerationTasks(CellState[][] currentGrid,

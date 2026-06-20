@@ -144,6 +144,14 @@ Para executar pelo Maven:
 mvn exec:java -Dexec.mainClass=app.Main -Dexec.args="parallel 4"
 ```
 
+Executar a interface grafica JavaFX:
+
+```bash
+mvn javafx:run
+```
+
+A interface grafica mostra uma grade pequena da simulacao e permite alternar entre os modos `Sequencial`, `Paralela` e `Distribuida RMI`. Ela serve para demonstracao visual da propagacao; os resultados experimentais devem ser gerados pelo `BenchmarkRunner`.
+
 Se o plugin `exec-maven-plugin` nao estiver configurado no ambiente, use a execucao por `javac` ou configure a classe principal no IntelliJ.
 
 ## Benchmark
