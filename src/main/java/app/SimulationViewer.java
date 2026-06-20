@@ -103,10 +103,10 @@ public class SimulationViewer extends Application {
 
         Label statsTitle = sectionTitle("Estados");
         progressBar.setPrefWidth(220);
-        progressPercentLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold;");
-        HBox progressLine = new HBox(8, progressBar, progressPercentLabel);
-        progressLine.setAlignment(Pos.CENTER_LEFT);
-        VBox progressBox = new VBox(5, sectionTitle("Progresso"), progressLine);
+        progressPercentLabel.setMinWidth(220);
+        progressPercentLabel.setAlignment(Pos.CENTER_RIGHT);
+        progressPercentLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #111827;");
+        VBox progressBox = new VBox(5, sectionTitle("Progresso"), progressPercentLabel, progressBar);
 
         sidePanel.getChildren().addAll(
                 progressBox,
