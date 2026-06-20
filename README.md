@@ -25,8 +25,8 @@ A simulacao acontece em geracoes discretas. Em cada geracao, o programa le a mat
 - Uma pessoa `INACTIVE` permanece `INACTIVE`.
 - Uma pessoa `GROK` permanece `GROK` durante toda a simulacao.
 - O estado `GROK` representa uma pessoa resistente/imune: ela nao vira `SPREADER`.
-- Um `WHATSAPP_GROUP` permanece fixo e nao cria fake news sozinho.
-- Um `INFLUENCER` permanece fixo e nao cria fake news sozinho.
+- Um `WHATSAPP_GROUP` nao cria fake news sozinho, mas pode surgir em regioes com espalhadores e tambem pode desaparecer com baixa probabilidade.
+- Um `INFLUENCER` nao cria fake news sozinho, mas pode surgir raramente em regioes com espalhadores e tambem pode desaparecer com baixa probabilidade.
 - Se um `IGNORANT` estiver perto de um `WHATSAPP_GROUP`, um `SPREADER` em raio 2 pode influencia-lo com chance maior.
 - Se um `IGNORANT` estiver perto de um `INFLUENCER`, um `SPREADER` em raio 3 pode influencia-lo com chance ainda maior.
 - A seed fica em `SimulationConfig`, permitindo repetir a mesma configuracao inicial.
@@ -42,7 +42,7 @@ As configuracoes principais ficam em `SimulationConfig`:
 - `initialWhatsAppGroupPercentage`: percentual inicial de grupos de WhatsApp.
 - `initialInfluencerPercentage`: percentual inicial de influenciadores.
 
-No cenario padrao, o `GROK` funciona como uma melhoria simples do modelo: individuos resistentes permanecem imunes durante toda a simulacao. Os grupos de WhatsApp e influenciadores tornam o cenario mais pessimista, pois aumentam o alcance da fake news quando ha espalhadores por perto. As probabilidades foram ajustadas para evitar uma propagacao instantanea: a fake news circula por mais tempo, mas ainda pode perder forca ao longo das geracoes.
+No cenario padrao, o `GROK` funciona como uma melhoria simples do modelo: individuos resistentes permanecem imunes durante toda a simulacao. Os grupos de WhatsApp e influenciadores tornam o cenario mais pessimista, pois aumentam o alcance da fake news quando ha espalhadores por perto. Eles tambem podem crescer ou diminuir ao longo da simulacao, representando ciclos de viralizacao e perda de engajamento. As probabilidades foram ajustadas para evitar uma propagacao instantanea: a fake news circula por mais tempo, mas ainda pode perder forca ao longo das geracoes.
 
 ### Como os agentes funcionam
 
@@ -303,8 +303,8 @@ Para a analise principal, recomenda-se usar primeiro os resultados da versao seq
 As melhorias implementadas no modelo foram:
 
 - `GROK`: representa individuo resistente/imune a fake news.
-- `WHATSAPP_GROUP`: representa grupo ativo que aumenta o alcance da fake news quando existe espalhador por perto.
-- `INFLUENCER`: representa perfil de grande alcance, ampliando a propagacao em raio maior.
+- `WHATSAPP_GROUP`: representa grupo ativo que aumenta o alcance da fake news quando existe espalhador por perto, podendo crescer ou desaparecer.
+- `INFLUENCER`: representa perfil de grande alcance, ampliando a propagacao em raio maior, podendo surgir ou perder relevancia.
 - Propagacao probabilistica: evita que a fake news domine toda a matriz instantaneamente.
 - Interface grafica JavaFX: permite visualizar a evolucao da simulacao.
 - Benchmark em lote: automatiza a geracao de dados experimentais para comparacao.

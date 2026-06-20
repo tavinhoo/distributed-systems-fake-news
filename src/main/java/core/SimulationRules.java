@@ -10,6 +10,10 @@ public class SimulationRules {
     private static final double WHATSAPP_SPREAD_BONUS = 0.05;
     private static final double INFLUENCER_SPREAD_BONUS = 0.12;
     private static final double MAX_SPREAD_PROBABILITY = 0.27;
+    private static final double WHATSAPP_DECAY_PROBABILITY = 0.010;
+    private static final double INFLUENCER_DECAY_PROBABILITY = 0.006;
+    private static final double WHATSAPP_CREATION_PROBABILITY = 0.012;
+    private static final double INFLUENCER_CREATION_PROBABILITY = 0.004;
 
     private SimulationRules() {
     }
@@ -30,10 +34,18 @@ public class SimulationRules {
                                       int randomRow) {
         CellState current = grid[row][col];
 
-        if (current == CellState.GROK
-                || current == CellState.WHATSAPP_GROUP
-                || current == CellState.INFLUENCER) {
+        if (current == CellState.GROK) {
             return current;
+        }
+
+        if (current == CellState.WHATSAPP_GROUP) {
+            double chance = deterministicRandom(config.getSeed(), generation, randomRow, col, 4);
+            return chance < WHATSAPP_DECAY_PROBABILITY ? CellState.INACTIVE : CellState.WHATSAPP_GROUP;
+        }
+
+        if (current == CellState.INFLUENCER) {
+            double chance = deterministicRandom(config.getSeed(), generation, randomRow, col, 5);
+            return chance < INFLUENCER_DECAY_PROBABILITY ? CellState.INACTIVE : CellState.INFLUENCER;
         }
 
         if (current == CellState.INACTIVE) {
@@ -47,6 +59,11 @@ public class SimulationRules {
 
         double spreadProbability = spreadProbability(grid, row, col, config);
         if (spreadProbability > 0) {
+            CellState amplificationAgent = maybeCreateAmplificationAgent(grid, row, col, generation, config, randomRow);
+            if (amplificationAgent != CellState.IGNORANT) {
+                return amplificationAgent;
+            }
+
             double chance = deterministicRandom(config.getSeed(), generation, randomRow, col, 2);
             return chance < spreadProbability ? CellState.SPREADER : CellState.IGNORANT;
         }
@@ -96,6 +113,29 @@ public class SimulationRules {
         }
 
         return Math.min(MAX_SPREAD_PROBABILITY, probability);
+    }
+
+    private static CellState maybeCreateAmplificationAgent(CellState[][] grid,
+                                                           int row,
+                                                           int col,
+                                                           int generation,
+                                                           SimulationConfig config,
+                                                           int randomRow) {
+        if (!hasSpreaderNeighbor(grid, row, col)) {
+            return CellState.IGNORANT;
+        }
+
+        double influencerChance = deterministicRandom(config.getSeed(), generation, randomRow, col, 6);
+        if (influencerChance < INFLUENCER_CREATION_PROBABILITY) {
+            return CellState.INFLUENCER;
+        }
+
+        double whatsAppChance = deterministicRandom(config.getSeed(), generation, randomRow, col, 7);
+        if (whatsAppChance < WHATSAPP_CREATION_PROBABILITY) {
+            return CellState.WHATSAPP_GROUP;
+        }
+
+        return CellState.IGNORANT;
     }
 
     private static boolean isInfluencedByWhatsAppGroup(CellState[][] grid, int row, int col) {
