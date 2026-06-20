@@ -75,7 +75,7 @@ public class SimulationViewer extends Application {
         modeBox.setPrefWidth(155);
 
         runButton = new Button("Iniciar");
-        Button stepButton = new Button("Passo");
+        Button stepButton = new Button("Passar");
         Button resetButton = new Button("Reiniciar");
 
         timeline = new Timeline(new KeyFrame(Duration.millis(180), event -> nextStep()));
@@ -379,7 +379,7 @@ public class SimulationViewer extends Application {
         }
 
         statusLabel.setText(String.format(
-                "Geracao %d de %d | Modo: %s",
+                "Geração %d de %d | Modo: %s",
                 generation, config.getGenerations(), modeBox.getValue()));
         ignorantLabel.setText("Ignorantes: " + ignorant);
         spreaderLabel.setText("Espalhadores: " + spreader);
