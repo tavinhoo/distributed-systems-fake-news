@@ -1,6 +1,7 @@
 target/
 out/
 benchmark-results.csv
+experimental-environment.txt
 
 .idea/
 !.mvn/wrapper/maven-wrapper.jar

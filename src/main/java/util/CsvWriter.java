@@ -11,24 +11,30 @@ public class CsvWriter {
 
     public static void writeBenchmarkHeader(String fileName) throws IOException {
         try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
-            writer.println("version,total_ms,speedup,efficiency,threads_or_workers,ignorant,spreader,inactive,grok,neutralized_by_grok");
+            writer.println("scenario,version,rows,columns,generations,initial_spreader_rate,units,total_ms,speedup,efficiency,ignorant,spreader,inactive,grok,neutralized_by_grok");
         }
     }
 
     public static void appendBenchmarkLine(String fileName,
+                                           String scenario,
                                            String version,
+                                           int rows,
+                                           int columns,
+                                           int generations,
+                                           double initialSpreaderRate,
+                                           int units,
                                            double totalMillis,
                                            double speedup,
                                            double efficiency,
-                                           int threadsOrWorkers,
                                            int ignorant,
                                            int spreader,
                                            int inactive,
                                            int grok,
                                            int neutralizedByGrok) throws IOException {
         try (PrintWriter writer = new PrintWriter(new FileWriter(fileName, true))) {
-            writer.printf(Locale.US, "%s,%.3f,%.4f,%.4f,%d,%d,%d,%d,%d,%d%n",
-                    version, totalMillis, speedup, efficiency, threadsOrWorkers,
+            writer.printf(Locale.US, "%s,%s,%d,%d,%d,%.4f,%d,%.3f,%.4f,%.4f,%d,%d,%d,%d,%d%n",
+                    scenario, version, rows, columns, generations, initialSpreaderRate,
+                    units, totalMillis, speedup, efficiency,
                     ignorant, spreader, inactive, grok, neutralizedByGrok);
         }
     }

@@ -156,7 +156,7 @@ Se o plugin `exec-maven-plugin` nao estiver configurado no ambiente, use a execu
 - quantidade final de `GROK`;
 - total de espalhadores neutralizados por influencia de `GROK`.
 
-Executar benchmark com 4 threads, 2 workers RMI locais e porta inicial 9100:
+Executar benchmark rapido com 4 threads, 2 workers RMI locais e porta inicial 9100:
 
 ```bash
 java -cp out app.BenchmarkRunner 4 2 9100
@@ -164,11 +164,33 @@ java -cp out app.BenchmarkRunner 4 2 9100
 
 Os argumentos sao opcionais e seguem esta ordem: `threads`, `workers`, `basePort`. O benchmark sobe os workers RMI locais automaticamente, executa a simulacao distribuida e depois encerra os objetos RMI.
 
+Executar benchmark em lote para gerar dados experimentais:
+
+```bash
+java -cp out app.BenchmarkRunner batch 9100
+```
+
+O modo `batch` executa cenarios simples variando:
+
+- tamanho da matriz;
+- numero de geracoes;
+- percentual inicial de espalhadores;
+- numero de threads;
+- numero de workers RMI.
+
 O benchmark gera o arquivo:
 
 ```text
 benchmark-results.csv
 ```
+
+O CSV inclui o nome do cenario, versao, tamanho da matriz, geracoes, percentual inicial de espalhadores, unidades de execucao, tempo, speedup, eficiencia e contagens finais. O benchmark tambem gera:
+
+```text
+experimental-environment.txt
+```
+
+Esse arquivo registra sistema operacional, versao do Java, processadores logicos, memoria maxima da JVM e ambiente usado na execucao.
 
 Ao final, o benchmark tambem imprime uma comparacao social sequencial entre:
 
