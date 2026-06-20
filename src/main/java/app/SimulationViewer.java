@@ -14,6 +14,9 @@ import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.NumberAxis;
+import javafx.scene.chart.XYChart;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
@@ -33,17 +36,18 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public class SimulationViewer extends Application {
-    private static final int ROWS = 60;
-    private static final int COLUMNS = 60;
-    private static final int GENERATIONS = 120;
-    private static final int THREADS = 4;
+    private static final int ROWS = 400;
+    private static final int COLUMNS = 400;
+    private static final int GENERATIONS = 100;
+    private static final int THREADS = 12;
     private static final int RMI_WORKERS = 2;
     private static final int RMI_BASE_PORT = 9600;
 
-    private final Canvas canvas = new Canvas(660, 660);
+    private final Canvas canvas = new Canvas(1400, 600);
     private final Label statusLabel = new Label();
     private final Label ignorantLabel = new Label();
     private final Label spreaderLabel = new Label();
@@ -57,6 +61,14 @@ public class SimulationViewer extends Application {
     private final Label resultUnitsLabel = new Label("-");
     private final Label resultMemoryLabel = new Label("-");
     private final ProgressBar progressBar = new ProgressBar(0);
+    private final LineChart<Number, Number> stateChart;
+    private final VBox stateRankingBox = new VBox(8);
+    private final XYChart.Series<Number, Number> ignorantSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> spreaderSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> inactiveSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> grokSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> whatsAppGroupSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> influencerSeries = new XYChart.Series<>();
     private final ComboBox<String> modeBox = new ComboBox<>();
     private final List<LocalWorker> localWorkers = new ArrayList<>();
     private Button runButton;
@@ -67,6 +79,36 @@ public class SimulationViewer extends Application {
     private long runStartNanos;
     private Timeline timeline;
     private DistributedSimulation distributedSimulation;
+
+    public SimulationViewer() {
+        NumberAxis generationAxis = new NumberAxis();
+        NumberAxis countAxis = new NumberAxis();
+        generationAxis.setLabel("Geracao");
+        countAxis.setLabel("Quantidade");
+
+        stateChart = new LineChart<>(generationAxis, countAxis);
+        stateChart.setTitle("Evolução dos agentes");
+        stateChart.setCreateSymbols(false);
+        stateChart.setAnimated(false);
+        stateChart.setLegendVisible(true);
+        stateChart.setPrefHeight(260);
+        stateChart.setStyle("-fx-background-color: #f8fafc; -fx-padding: 8;");
+        generationAxis.setStyle("-fx-tick-label-fill: #111827;");
+        countAxis.setStyle("-fx-tick-label-fill: #111827;");
+
+        ignorantSeries.setName("Ignorantes");
+        spreaderSeries.setName("Espalhadores");
+        inactiveSeries.setName("Inativos");
+        grokSeries.setName("GROK");
+        whatsAppGroupSeries.setName("Grupos WhatsApp");
+        influencerSeries.setName("Influenciadores");
+        stateChart.getData().add(ignorantSeries);
+        stateChart.getData().add(spreaderSeries);
+        stateChart.getData().add(inactiveSeries);
+        stateChart.getData().add(grokSeries);
+        stateChart.getData().add(whatsAppGroupSeries);
+        stateChart.getData().add(influencerSeries);
+    }
 
     @Override
     public void start(Stage stage) {
@@ -88,7 +130,7 @@ public class SimulationViewer extends Application {
         HBox controls = new HBox(10, modeBox, runButton, stepButton, resetButton);
         controls.setAlignment(Pos.CENTER_LEFT);
 
-        Label title = new Label("Propagacao de Fake News");
+        Label title = new Label("Propagação de Fake News");
         title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #f8fafc;");
         statusLabel.setStyle("-fx-text-fill: #cbd5e1;");
 
@@ -102,6 +144,7 @@ public class SimulationViewer extends Application {
         sidePanel.setStyle("-fx-background-color: #f8fafc; -fx-border-color: #d0d7de; -fx-border-width: 0 0 0 1;");
 
         Label statsTitle = sectionTitle("Estados");
+        stateRankingBox.setFillWidth(true);
         progressBar.setPrefWidth(220);
         progressPercentLabel.setMinWidth(220);
         progressPercentLabel.setAlignment(Pos.CENTER_RIGHT);
@@ -111,19 +154,7 @@ public class SimulationViewer extends Application {
         sidePanel.getChildren().addAll(
                 progressBox,
                 statsTitle,
-                counterItem(ignorantLabel, colorOf(CellState.IGNORANT)),
-                counterItem(spreaderLabel, colorOf(CellState.SPREADER)),
-                counterItem(inactiveLabel, colorOf(CellState.INACTIVE)),
-                counterItem(grokLabel, colorOf(CellState.GROK)),
-                counterItem(whatsAppGroupLabel, colorOf(CellState.WHATSAPP_GROUP)),
-                counterItem(influencerLabel, colorOf(CellState.INFLUENCER)),
-                sectionTitle("Legenda"),
-                legendItem("Ignorante", colorOf(CellState.IGNORANT)),
-                legendItem("Espalhador", colorOf(CellState.SPREADER)),
-                legendItem("Inativo", colorOf(CellState.INACTIVE)),
-                legendItem("GROK", colorOf(CellState.GROK)),
-                legendItem("Grupo WhatsApp", colorOf(CellState.WHATSAPP_GROUP)),
-                legendItem("Influenciador", colorOf(CellState.INFLUENCER)),
+                stateRankingBox,
                 sectionTitle("Resultado final"),
                 resultModeLabel,
                 resultTimeLabel,
@@ -134,15 +165,20 @@ public class SimulationViewer extends Application {
         canvasPane.setPadding(new Insets(16));
         canvasPane.setStyle("-fx-background-color: #0f172a;");
 
+        VBox centerContent = new VBox(10, canvasPane, stateChart);
+        centerContent.setStyle("-fx-background-color: #0f172a;");
+
         BorderPane root = new BorderPane();
         root.setTop(header);
-        root.setCenter(canvasPane);
+        root.setCenter(centerContent);
         root.setRight(sidePanel);
 
         reset();
 
-        stage.setTitle("Propagacao de Fake News");
-        stage.setScene(new Scene(root));
+        stage.setTitle("Propagação de Fake News");
+        Scene scene = new Scene(root);
+        scene.getStylesheets().add(getClass().getResource("/simulation-viewer.css").toExternalForm());
+        stage.setScene(scene);
         stage.setOnCloseRequest(event -> stopWorkers());
         stage.show();
     }
@@ -172,6 +208,7 @@ public class SimulationViewer extends Application {
         currentGrid = GridFactory.createInitialGrid(config);
         runButton.setText("Iniciar");
         clearResults();
+        clearChart();
         drawGrid();
         updateStatus();
     }
@@ -197,6 +234,7 @@ public class SimulationViewer extends Application {
             generation++;
             drawGrid();
             updateStatus();
+            updateChart();
             if (generation >= config.getGenerations()) {
                 finishSimulation();
             }
@@ -277,7 +315,6 @@ public class SimulationViewer extends Application {
                 UnicastRemoteObject.unexportObject(worker.remote(), true);
                 UnicastRemoteObject.unexportObject(worker.registry(), true);
             } catch (Exception ignored) {
-                // A janela pode ser fechada antes de iniciar o modo distribuido.
             }
         }
         localWorkers.clear();
@@ -389,13 +426,82 @@ public class SimulationViewer extends Application {
         influencerLabel.setText("Influenciadores: " + influencer);
         progressBar.setProgress((double) generation / config.getGenerations());
         progressPercentLabel.setText(String.format("%.0f%%", 100.0 * generation / config.getGenerations()));
+        updateStateRanking(ignorant, spreader, inactive, grok, whatsAppGroup, influencer);
+    }
+
+    private void updateStateRanking(int ignorant,
+                                    int spreader,
+                                    int inactive,
+                                    int grok,
+                                    int whatsAppGroup,
+                                    int influencer) {
+        List<StateCount> counts = new ArrayList<>();
+        counts.add(new StateCount(ignorantLabel, "Ignorantes", CellState.IGNORANT, ignorant));
+        counts.add(new StateCount(spreaderLabel, "Espalhadores", CellState.SPREADER, spreader));
+        counts.add(new StateCount(inactiveLabel, "Inativos", CellState.INACTIVE, inactive));
+        counts.add(new StateCount(grokLabel, "GROK", CellState.GROK, grok));
+        counts.add(new StateCount(whatsAppGroupLabel, "Grupos WhatsApp", CellState.WHATSAPP_GROUP, whatsAppGroup));
+        counts.add(new StateCount(influencerLabel, "Influenciadores", CellState.INFLUENCER, influencer));
+
+        counts.sort(Comparator.comparingInt(StateCount::count).reversed());
+
+        stateRankingBox.getChildren().clear();
+        for (int index = 0; index < counts.size(); index++) {
+            StateCount count = counts.get(index);
+            count.label().setText((index + 1) + ". " + count.name() + ": " + count.count());
+            stateRankingBox.getChildren().add(counterItem(count.label(), colorOf(count.state())));
+        }
+    }
+
+    private void clearChart() {
+        ignorantSeries.getData().clear();
+        spreaderSeries.getData().clear();
+        inactiveSeries.getData().clear();
+        grokSeries.getData().clear();
+        whatsAppGroupSeries.getData().clear();
+        influencerSeries.getData().clear();
+        updateChart();
+    }
+
+    private void updateChart() {
+        int ignorant = 0;
+        int spreader = 0;
+        int inactive = 0;
+        int grok = 0;
+        int whatsAppGroup = 0;
+        int influencer = 0;
+
+        for (CellState[] row : currentGrid) {
+            for (CellState state : row) {
+                if (state == CellState.IGNORANT) {
+                    ignorant++;
+                } else if (state == CellState.SPREADER) {
+                    spreader++;
+                } else if (state == CellState.INACTIVE) {
+                    inactive++;
+                } else if (state == CellState.GROK) {
+                    grok++;
+                } else if (state == CellState.WHATSAPP_GROUP) {
+                    whatsAppGroup++;
+                } else {
+                    influencer++;
+                }
+            }
+        }
+
+        ignorantSeries.getData().add(new XYChart.Data<>(generation, ignorant));
+        spreaderSeries.getData().add(new XYChart.Data<>(generation, spreader));
+        inactiveSeries.getData().add(new XYChart.Data<>(generation, inactive));
+        grokSeries.getData().add(new XYChart.Data<>(generation, grok));
+        whatsAppGroupSeries.getData().add(new XYChart.Data<>(generation, whatsAppGroup));
+        influencerSeries.getData().add(new XYChart.Data<>(generation, influencer));
     }
 
     private void clearResults() {
         resultModeLabel.setText("Modo: -");
         resultTimeLabel.setText("Tempo: -");
         resultUnitsLabel.setText("Unidades: -");
-        resultMemoryLabel.setText("Memoria JVM: -");
+        resultMemoryLabel.setText("Memória JVM: -");
     }
 
     private void updateResults() {
@@ -421,6 +527,9 @@ public class SimulationViewer extends Application {
     }
 
     private record LocalWorker(Registry registry, MatrixWorkerImpl remote) {
+    }
+
+    private record StateCount(Label label, String name, CellState state, int count) {
     }
 
     public static void main(String[] args) {

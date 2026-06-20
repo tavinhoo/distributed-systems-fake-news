@@ -1,0 +1,75 @@
+.chart {
+    -fx-background-color: #f8fafc;
+}
+
+.chart-plot-background {
+    -fx-background-color: #ffffff;
+}
+
+.axis {
+    -fx-tick-label-fill: #111827;
+}
+
+.axis-label {
+    -fx-text-fill: #111827;
+}
+
+.chart-title {
+    -fx-text-fill: #111827;
+}
+
+.chart-legend {
+    -fx-background-color: #f8fafc;
+}
+
+.chart-legend-item {
+    -fx-text-fill: #111827;
+}
+
+.default-color0.chart-series-line {
+    -fx-stroke: #111111;
+}
+
+.default-color1.chart-series-line {
+    -fx-stroke: #ff1744;
+}
+
+.default-color2.chart-series-line {
+    -fx-stroke: #3f51b5;
+}
+
+.default-color3.chart-series-line {
+    -fx-stroke: #00e676;
+}
+
+.default-color4.chart-series-line {
+    -fx-stroke: #ffab00;
+}
+
+.default-color5.chart-series-line {
+    -fx-stroke: #d500f9;
+}
+
+.default-color0.chart-legend-item-symbol {
+    -fx-background-color: #111111;
+}
+
+.default-color1.chart-legend-item-symbol {
+    -fx-background-color: #ff1744;
+}
+
+.default-color2.chart-legend-item-symbol {
+    -fx-background-color: #3f51b5;
+}
+
+.default-color3.chart-legend-item-symbol {
+    -fx-background-color: #00e676;
+}
+
+.default-color4.chart-legend-item-symbol {
+    -fx-background-color: #ffab00;
+}
+
+.default-color5.chart-legend-item-symbol {
+    -fx-background-color: #d500f9;
+}

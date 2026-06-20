@@ -29,7 +29,6 @@ public class MatrixWorker implements Runnable {
 
     @Override
     public void run() {
-        // Cada thread escreve apenas nas linhas da sua faixa.
         for (int row = startRowInclusive; row < endRowExclusive; row++) {
             for (int col = 0; col < config.getColumns(); col++) {
                 nextGrid[row][col] = SimulationRules.nextState(currentGrid, row, col, generation, config);
