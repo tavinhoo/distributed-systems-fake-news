@@ -186,6 +186,7 @@ public class BenchmarkRunner {
                 config.getInitialSpreaderRate(), units, totalMillis, speedup, efficiency,
                 result.getIgnorantCount(), result.getSpreaderCount(), result.getInactiveCount(),
                 result.getGrokCount(), result.getWhatsAppGroupCount(), result.getInfluencerCount(),
+                result.getJournalistCount(),
                 result.getNeutralizedByGrokCount());
     }
 
@@ -222,6 +223,7 @@ public class BenchmarkRunner {
                 && expected.getGrokCount() == current.getGrokCount()
                 && expected.getWhatsAppGroupCount() == current.getWhatsAppGroupCount()
                 && expected.getInfluencerCount() == current.getInfluencerCount()
+                && expected.getJournalistCount() == current.getJournalistCount()
                 && expected.getNeutralizedByGrokCount() == current.getNeutralizedByGrokCount();
 
         if (!same) {
@@ -239,13 +241,15 @@ public class BenchmarkRunner {
 
         System.out.println();
         System.out.println("Comparacao social sequencial:");
-        System.out.printf("Com GROK:    IGNORANT=%d, SPREADER=%d, INACTIVE=%d, GROK=%d, WHATSAPP=%d, INFLUENCER=%d, neutralizados=%d%n",
+        System.out.printf("Com GROK:    IGNORANT=%d, SPREADER=%d, INACTIVE=%d, GROK=%d, WHATSAPP=%d, INFLUENCER=%d, JOURNALIST=%d, neutralizados=%d%n",
                 withGrok.getIgnorantCount(), withGrok.getSpreaderCount(), withGrok.getInactiveCount(),
                 withGrok.getGrokCount(), withGrok.getWhatsAppGroupCount(), withGrok.getInfluencerCount(),
+                withGrok.getJournalistCount(),
                 withGrok.getNeutralizedByGrokCount());
-        System.out.printf("Sem GROK:    IGNORANT=%d, SPREADER=%d, INACTIVE=%d, GROK=%d, WHATSAPP=%d, INFLUENCER=%d, neutralizados=%d%n",
+        System.out.printf("Sem GROK:    IGNORANT=%d, SPREADER=%d, INACTIVE=%d, GROK=%d, WHATSAPP=%d, INFLUENCER=%d, JOURNALIST=%d, neutralizados=%d%n",
                 noGrok.getIgnorantCount(), noGrok.getSpreaderCount(), noGrok.getInactiveCount(),
                 noGrok.getGrokCount(), noGrok.getWhatsAppGroupCount(), noGrok.getInfluencerCount(),
+                noGrok.getJournalistCount(),
                 noGrok.getNeutralizedByGrokCount());
     }
 

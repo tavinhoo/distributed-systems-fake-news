@@ -10,6 +10,7 @@ public class SimulationResult {
     private final int grokCount;
     private final int whatsAppGroupCount;
     private final int influencerCount;
+    private final int journalistCount;
     private final int neutralizedByGrokCount;
 
     public SimulationResult(CellState[][] finalGrid,
@@ -21,6 +22,7 @@ public class SimulationResult {
                             int grokCount,
                             int whatsAppGroupCount,
                             int influencerCount,
+                            int journalistCount,
                             int neutralizedByGrokCount) {
         this.finalGrid = finalGrid;
         this.generations = generations;
@@ -31,6 +33,7 @@ public class SimulationResult {
         this.grokCount = grokCount;
         this.whatsAppGroupCount = whatsAppGroupCount;
         this.influencerCount = influencerCount;
+        this.journalistCount = journalistCount;
         this.neutralizedByGrokCount = neutralizedByGrokCount;
     }
 
@@ -68,6 +71,10 @@ public class SimulationResult {
 
     public int getInfluencerCount() {
         return influencerCount;
+    }
+
+    public int getJournalistCount() {
+        return journalistCount;
     }
 
     public int getNeutralizedByGrokCount() {

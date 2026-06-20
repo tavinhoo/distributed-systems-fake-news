@@ -28,6 +28,12 @@ public class GridFactory {
                 } else if (chance < config.getInitialGrokPercentage()
                         + config.getInitialWhatsAppGroupPercentage()
                         + config.getInitialInfluencerPercentage()
+                        + config.getInitialJournalistPercentage()) {
+                    grid[row][col] = CellState.JOURNALIST;
+                } else if (chance < config.getInitialGrokPercentage()
+                        + config.getInitialWhatsAppGroupPercentage()
+                        + config.getInitialInfluencerPercentage()
+                        + config.getInitialJournalistPercentage()
                         + config.getInitialSpreaderRate()) {
                     grid[row][col] = CellState.SPREADER;
                 } else {

@@ -9,12 +9,16 @@ public class SimulationRules {
     public static final int MAX_INFLUENCE_RADIUS = 3;
     private static final double WHATSAPP_SPREAD_BONUS = 0.05;
     private static final double INFLUENCER_SPREAD_BONUS = 0.12;
+    private static final double JOURNALIST_SPREAD_REDUCTION_FACTOR = 0.72;
     private static final double MAX_SPREAD_PROBABILITY = 0.27;
     private static final double WHATSAPP_DECAY_PROBABILITY = 0.010;
     private static final double INFLUENCER_DECAY_PROBABILITY = 0.006;
+    private static final double JOURNALIST_DECAY_PROBABILITY = 0.004;
     private static final double WHATSAPP_CREATION_PROBABILITY = 0.012;
     private static final double INFLUENCER_CREATION_PROBABILITY = 0.004;
     private static final double GROK_CORRUPTION_PROBABILITY = 0.001;
+    private static final double GROK_REHABILITATION_PROBABILITY = 0.0004;
+    private static final double JOURNALIST_CORRECTION_PROBABILITY = 0.004;
 
     private SimulationRules() {
     }
@@ -52,11 +56,28 @@ public class SimulationRules {
             return chance < INFLUENCER_DECAY_PROBABILITY ? CellState.INACTIVE : CellState.INFLUENCER;
         }
 
+        if (current == CellState.JOURNALIST) {
+            double chance = deterministicRandom(config.getSeed(), generation, randomRow, col, 11);
+            return chance < JOURNALIST_DECAY_PROBABILITY ? CellState.INACTIVE : CellState.JOURNALIST;
+        }
+
         if (current == CellState.INACTIVE) {
             return CellState.INACTIVE;
         }
 
         if (current == CellState.SPREADER) {
+            double rehabilitationChance = deterministicRandom(config.getSeed(), generation, randomRow, col, 10);
+            if (hasNeighborWithState(grid, row, col, CellState.GROK, 1)
+                    && rehabilitationChance < GROK_REHABILITATION_PROBABILITY) {
+                return CellState.GROK;
+            }
+
+            double correctionChance = deterministicRandom(config.getSeed(), generation, randomRow, col, 12);
+            if (hasNeighborWithState(grid, row, col, CellState.JOURNALIST, 1)
+                    && correctionChance < JOURNALIST_CORRECTION_PROBABILITY) {
+                return CellState.INACTIVE;
+            }
+
             double chance = deterministicRandom(config.getSeed(), generation, randomRow, col, 1);
             return chance < config.getInactiveProbability() ? CellState.INACTIVE : CellState.SPREADER;
         }
@@ -127,6 +148,9 @@ public class SimulationRules {
         }
         if (hasNeighborWithState(grid, row, col, CellState.GROK, 1)) {
             probability *= config.getGrokInfluenceReductionFactor();
+        }
+        if (hasNeighborWithState(grid, row, col, CellState.JOURNALIST, 1)) {
+            probability *= JOURNALIST_SPREAD_REDUCTION_FACTOR;
         }
 
         return Math.min(MAX_SPREAD_PROBABILITY, probability);

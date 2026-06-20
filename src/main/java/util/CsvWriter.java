@@ -11,7 +11,7 @@ public class CsvWriter {
 
     public static void writeBenchmarkHeader(String fileName) throws IOException {
         try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
-            writer.println("scenario,version,rows,columns,generations,initial_spreader_rate,units,total_ms,speedup,efficiency,ignorant,spreader,inactive,grok,whatsapp_group,influencer,neutralized_by_grok");
+            writer.println("scenario,version,rows,columns,generations,initial_spreader_rate,units,total_ms,speedup,efficiency,ignorant,spreader,inactive,grok,whatsapp_group,influencer,journalist,neutralized_by_grok");
         }
     }
 
@@ -32,12 +32,13 @@ public class CsvWriter {
                                            int grok,
                                            int whatsAppGroup,
                                            int influencer,
+                                           int journalist,
                                            int neutralizedByGrok) throws IOException {
         try (PrintWriter writer = new PrintWriter(new FileWriter(fileName, true))) {
-            writer.printf(Locale.US, "%s,%s,%d,%d,%d,%.4f,%d,%.3f,%.4f,%.4f,%d,%d,%d,%d,%d,%d,%d%n",
+            writer.printf(Locale.US, "%s,%s,%d,%d,%d,%.4f,%d,%.3f,%.4f,%.4f,%d,%d,%d,%d,%d,%d,%d,%d%n",
                     scenario, version, rows, columns, generations, initialSpreaderRate,
                     units, totalMillis, speedup, efficiency,
-                    ignorant, spreader, inactive, grok, whatsAppGroup, influencer, neutralizedByGrok);
+                    ignorant, spreader, inactive, grok, whatsAppGroup, influencer, journalist, neutralizedByGrok);
         }
     }
 }

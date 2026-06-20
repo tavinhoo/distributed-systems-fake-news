@@ -11,9 +11,10 @@ Cada posicao da matriz representa uma pessoa. Os estados possiveis sao:
 - `IGNORANT`: ainda nao recebeu/acredita na informacao.
 - `SPREADER`: acredita e compartilha a informacao.
 - `INACTIVE`: recebeu a informacao, mas nao compartilha mais.
-- `GROK`: agente verificador que combate a fake news, mas pode ser corrompido raramente.
+- `GROK`: agente verificador que combate a fake news, mas pode ser corrompido ou reabilitado raramente.
 - `WHATSAPP_GROUP`: grupo ativo que amplia a propagacao ao redor.
 - `INFLUENCER`: perfil de grande alcance que amplia ainda mais a propagacao.
+- `JOURNALIST`: agente jornalistico que combate localmente a fake news.
 
 A simulacao acontece em geracoes discretas. Em cada geracao, o programa le a matriz atual (`currentGrid`) e escreve o resultado na proxima matriz (`nextGrid`). Isso evita que uma celula atualizada no inicio da varredura influencie outra celula na mesma geracao.
 
@@ -25,8 +26,11 @@ A simulacao acontece em geracoes discretas. Em cada geracao, o programa le a mat
 - Uma pessoa `INACTIVE` permanece `INACTIVE`.
 - Uma pessoa `GROK` representa uma IA verificadora que reduz a propagacao ao redor e pode neutralizar tentativas de convencimento.
 - Como a IA tambem aprende a partir do ambiente, existe uma chance muito pequena de um `GROK` exposto a um `SPREADER` ser corrompido e virar `SPREADER`.
+- Um `SPREADER` proximo de um `GROK` tambem pode voltar a ser `GROK`, representando correcao por uma fonte autentica, mas essa recuperacao e ainda mais rara que a corrupcao.
 - Um `WHATSAPP_GROUP` nao cria fake news sozinho, mas pode surgir em regioes com espalhadores e tambem pode desaparecer com baixa probabilidade.
 - Um `INFLUENCER` nao cria fake news sozinho, mas pode surgir raramente em regioes com espalhadores e tambem pode desaparecer com baixa probabilidade.
+- Um `JOURNALIST` aparece em proporcao maior que o `INFLUENCER`, mas tem alcance menor: ele reduz localmente a chance de propagacao e pode fazer um `SPREADER` virar `INACTIVE` com baixa probabilidade.
+- Um `JOURNALIST` tambem pode perder relevancia e virar `INACTIVE`, preservando um cenario pessimista.
 - Se um `IGNORANT` estiver perto de um `WHATSAPP_GROUP`, um `SPREADER` em raio 2 pode influencia-lo com chance maior.
 - Se um `IGNORANT` estiver perto de um `INFLUENCER`, um `SPREADER` em raio 3 pode influencia-lo com chance ainda maior.
 - A seed fica em `SimulationConfig`, permitindo repetir a mesma configuracao inicial.
@@ -41,8 +45,9 @@ As configuracoes principais ficam em `SimulationConfig`:
 - `initialGrokPercentage`: percentual inicial de agentes verificadores.
 - `initialWhatsAppGroupPercentage`: percentual inicial de grupos de WhatsApp.
 - `initialInfluencerPercentage`: percentual inicial de influenciadores.
+- `initialJournalistPercentage`: percentual inicial de jornalistas.
 
-No cenario padrao, o `GROK` funciona como uma melhoria do modelo: ele reduz a chance de propagacao ao redor e pode neutralizar a conversao de individuos ignorantes. Ainda assim, por representar uma IA que aprende a partir do ambiente, ha uma chance muito baixa de corrupcao quando esta proximo de espalhadores. Os grupos de WhatsApp e influenciadores tornam o cenario mais pessimista, pois aumentam o alcance da fake news quando ha espalhadores por perto. Eles tambem podem crescer ou diminuir ao longo da simulacao, representando ciclos de viralizacao e perda de engajamento. As probabilidades foram ajustadas para evitar uma propagacao instantanea: a fake news circula por mais tempo, mas ainda pode perder forca ao longo das geracoes.
+No cenario padrao, o `GROK` funciona como uma melhoria do modelo: ele reduz a chance de propagacao ao redor e pode neutralizar a conversao de individuos ignorantes. Ainda assim, por representar uma IA que aprende a partir do ambiente, ha uma chance muito baixa de corrupcao quando esta proximo de espalhadores. Um espalhador exposto a um `GROK` pode voltar a ser divulgador da verdade, mas essa reabilitacao e menos provavel que a corrupcao. Os grupos de WhatsApp e influenciadores tornam o cenario mais pessimista, pois aumentam o alcance da fake news quando ha espalhadores por perto. O `JOURNALIST` introduz uma segunda forca de combate, mais comum que o influenciador, mas com alcance curto e efeito moderado. As probabilidades foram ajustadas para evitar uma propagacao instantanea: a fake news circula por mais tempo, mas ainda pode perder forca ao longo das geracoes.
 
 ### Como os agentes funcionam
 
@@ -364,9 +369,10 @@ Para a analise principal, recomenda-se usar primeiro os resultados da versao seq
 
 As melhorias implementadas no modelo foram:
 
-- `GROK`: representa uma IA verificadora que reduz a propagacao, pode neutralizar conversoes e possui pequena chance de corrupcao.
+- `GROK`: representa uma IA verificadora que reduz a propagacao, pode neutralizar conversoes, possui pequena chance de corrupcao e pode ser reabilitada por uma fonte autentica com chance ainda menor.
 - `WHATSAPP_GROUP`: representa grupo ativo que aumenta o alcance da fake news quando existe espalhador por perto, podendo crescer ou desaparecer.
 - `INFLUENCER`: representa perfil de grande alcance, ampliando a propagacao em raio maior, podendo surgir ou perder relevancia.
+- `JOURNALIST`: representa uma entidade jornalistica mais frequente que o influenciador, mas com alcance curto, efeito local e chance de perder relevancia.
 - Propagacao probabilistica: evita que a fake news domine toda a matriz instantaneamente.
 - Interface grafica JavaFX: permite visualizar a evolucao da simulacao com painel de estados, resultados e grafico.
 - Separacao entre modo visual e modo benchmark na interface: evita misturar o tempo de animacao do JavaFX com o tempo real de processamento.

@@ -8,5 +8,6 @@ public enum CellState implements Serializable {
     INACTIVE,
     GROK,
     WHATSAPP_GROUP,
-    INFLUENCER
+    INFLUENCER,
+    JOURNALIST
 }

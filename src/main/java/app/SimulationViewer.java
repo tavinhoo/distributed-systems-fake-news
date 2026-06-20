@@ -69,6 +69,7 @@ public class SimulationViewer extends Application {
     private final Label grokLabel = new Label();
     private final Label whatsAppGroupLabel = new Label();
     private final Label influencerLabel = new Label();
+    private final Label journalistLabel = new Label();
     private final Label progressPercentLabel = new Label("0%");
     private final Label resultModeLabel = new Label("-");
     private final Label resultTimeLabel = new Label("-");
@@ -84,6 +85,7 @@ public class SimulationViewer extends Application {
     private final XYChart.Series<Number, Number> grokSeries = new XYChart.Series<>();
     private final XYChart.Series<Number, Number> whatsAppGroupSeries = new XYChart.Series<>();
     private final XYChart.Series<Number, Number> influencerSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> journalistSeries = new XYChart.Series<>();
     private final ComboBox<String> modeBox = new ComboBox<>();
     private final ComboBox<String> executionBox = new ComboBox<>();
     private final List<LocalWorker> localWorkers = new ArrayList<>();
@@ -133,12 +135,14 @@ public class SimulationViewer extends Application {
         grokSeries.setName("GROK");
         whatsAppGroupSeries.setName("Grupos WhatsApp");
         influencerSeries.setName("Influenciadores");
+        journalistSeries.setName("Jornalistas");
         stateChart.getData().add(ignorantSeries);
         stateChart.getData().add(spreaderSeries);
         stateChart.getData().add(inactiveSeries);
         stateChart.getData().add(grokSeries);
         stateChart.getData().add(whatsAppGroupSeries);
         stateChart.getData().add(influencerSeries);
+        stateChart.getData().add(journalistSeries);
     }
 
     @Override
@@ -753,6 +757,9 @@ public class SimulationViewer extends Application {
         if (state == CellState.INFLUENCER) {
             return Color.web("#d500f9");
         }
+        if (state == CellState.JOURNALIST) {
+            return Color.web("#06b6d4");
+        }
         return Color.web("#111111");
     }
 
@@ -830,6 +837,7 @@ public class SimulationViewer extends Application {
         int grok = 0;
         int whatsAppGroup = 0;
         int influencer = 0;
+        int journalist = 0;
 
         for (CellState[] row : currentGrid) {
             for (CellState state : row) {
@@ -843,8 +851,10 @@ public class SimulationViewer extends Application {
                     grok++;
                 } else if (state == CellState.WHATSAPP_GROUP) {
                     whatsAppGroup++;
-                } else {
+                } else if (state == CellState.INFLUENCER) {
                     influencer++;
+                } else {
+                    journalist++;
                 }
             }
         }
@@ -858,9 +868,10 @@ public class SimulationViewer extends Application {
         grokLabel.setText("GROK: " + grok);
         whatsAppGroupLabel.setText("Grupos WhatsApp: " + whatsAppGroup);
         influencerLabel.setText("Influenciadores: " + influencer);
+        journalistLabel.setText("Jornalistas: " + journalist);
         progressBar.setProgress((double) generation / config.getGenerations());
         progressPercentLabel.setText(String.format("%.0f%%", 100.0 * generation / config.getGenerations()));
-        updateStateRanking(ignorant, spreader, inactive, grok, whatsAppGroup, influencer);
+        updateStateRanking(ignorant, spreader, inactive, grok, whatsAppGroup, influencer, journalist);
     }
 
     private void updateStateRanking(int ignorant,
@@ -868,7 +879,8 @@ public class SimulationViewer extends Application {
                                     int inactive,
                                     int grok,
                                     int whatsAppGroup,
-                                    int influencer) {
+                                    int influencer,
+                                    int journalist) {
         List<StateCount> counts = new ArrayList<>();
         counts.add(new StateCount(ignorantLabel, "Ignorantes", CellState.IGNORANT, ignorant));
         counts.add(new StateCount(spreaderLabel, "Espalhadores", CellState.SPREADER, spreader));
@@ -876,6 +888,7 @@ public class SimulationViewer extends Application {
         counts.add(new StateCount(grokLabel, "GROK", CellState.GROK, grok));
         counts.add(new StateCount(whatsAppGroupLabel, "Grupos WhatsApp", CellState.WHATSAPP_GROUP, whatsAppGroup));
         counts.add(new StateCount(influencerLabel, "Influenciadores", CellState.INFLUENCER, influencer));
+        counts.add(new StateCount(journalistLabel, "Jornalistas", CellState.JOURNALIST, journalist));
 
         counts.sort(Comparator.comparingInt(StateCount::count).reversed());
 
@@ -894,6 +907,7 @@ public class SimulationViewer extends Application {
         grokSeries.getData().clear();
         whatsAppGroupSeries.getData().clear();
         influencerSeries.getData().clear();
+        journalistSeries.getData().clear();
         updateChart();
     }
 
@@ -904,6 +918,7 @@ public class SimulationViewer extends Application {
         int grok = 0;
         int whatsAppGroup = 0;
         int influencer = 0;
+        int journalist = 0;
 
         for (CellState[] row : currentGrid) {
             for (CellState state : row) {
@@ -917,8 +932,10 @@ public class SimulationViewer extends Application {
                     grok++;
                 } else if (state == CellState.WHATSAPP_GROUP) {
                     whatsAppGroup++;
-                } else {
+                } else if (state == CellState.INFLUENCER) {
                     influencer++;
+                } else {
+                    journalist++;
                 }
             }
         }
@@ -929,6 +946,7 @@ public class SimulationViewer extends Application {
         grokSeries.getData().add(new XYChart.Data<>(generation, grok));
         whatsAppGroupSeries.getData().add(new XYChart.Data<>(generation, whatsAppGroup));
         influencerSeries.getData().add(new XYChart.Data<>(generation, influencer));
+        journalistSeries.getData().add(new XYChart.Data<>(generation, journalist));
     }
 
     private void clearResults() {

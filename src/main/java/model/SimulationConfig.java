@@ -10,6 +10,7 @@ public class SimulationConfig implements Serializable {
     private final double initialGrokPercentage;
     private final double initialWhatsAppGroupPercentage;
     private final double initialInfluencerPercentage;
+    private final double initialJournalistPercentage;
     private final double spreadProbability;
     private final double inactiveProbability;
     private final double grokCorrectionProbability;
@@ -27,7 +28,7 @@ public class SimulationConfig implements Serializable {
                             double grokInfluenceReductionFactor,
                             long seed) {
         this(rows, columns, generations, initialSpreaderRate, initialGrokPercentage,
-                0.015, 0.010, spreadProbability, inactiveProbability,
+                0.015, 0.010, 0.025, spreadProbability, inactiveProbability,
                 grokCorrectionProbability, grokInfluenceReductionFactor, seed);
     }
 
@@ -43,6 +44,25 @@ public class SimulationConfig implements Serializable {
                             double grokCorrectionProbability,
                             double grokInfluenceReductionFactor,
                             long seed) {
+        this(rows, columns, generations, initialSpreaderRate, initialGrokPercentage,
+                initialWhatsAppGroupPercentage, initialInfluencerPercentage, 0.025,
+                spreadProbability, inactiveProbability, grokCorrectionProbability,
+                grokInfluenceReductionFactor, seed);
+    }
+
+    public SimulationConfig(int rows,
+                            int columns,
+                            int generations,
+                            double initialSpreaderRate,
+                            double initialGrokPercentage,
+                            double initialWhatsAppGroupPercentage,
+                            double initialInfluencerPercentage,
+                            double initialJournalistPercentage,
+                            double spreadProbability,
+                            double inactiveProbability,
+                            double grokCorrectionProbability,
+                            double grokInfluenceReductionFactor,
+                            long seed) {
         this.rows = rows;
         this.columns = columns;
         this.generations = generations;
@@ -50,6 +70,7 @@ public class SimulationConfig implements Serializable {
         this.initialGrokPercentage = initialGrokPercentage;
         this.initialWhatsAppGroupPercentage = initialWhatsAppGroupPercentage;
         this.initialInfluencerPercentage = initialInfluencerPercentage;
+        this.initialJournalistPercentage = initialJournalistPercentage;
         this.spreadProbability = spreadProbability;
         this.inactiveProbability = inactiveProbability;
         this.grokCorrectionProbability = grokCorrectionProbability;
@@ -64,7 +85,7 @@ public class SimulationConfig implements Serializable {
 
     public SimulationConfig withoutGrok() {
         return new SimulationConfig(rows, columns, generations, initialSpreaderRate, 0.0,
-                initialWhatsAppGroupPercentage, initialInfluencerPercentage,
+                initialWhatsAppGroupPercentage, initialInfluencerPercentage, initialJournalistPercentage,
                 spreadProbability, inactiveProbability, 0.0, grokInfluenceReductionFactor, seed);
     }
 
@@ -94,6 +115,10 @@ public class SimulationConfig implements Serializable {
 
     public double getInitialInfluencerPercentage() {
         return initialInfluencerPercentage;
+    }
+
+    public double getInitialJournalistPercentage() {
+        return initialJournalistPercentage;
     }
 
     public double getSpreadProbability() {
