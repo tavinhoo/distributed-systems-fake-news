@@ -14,6 +14,7 @@ public class SimulationRules {
     private static final double INFLUENCER_DECAY_PROBABILITY = 0.006;
     private static final double WHATSAPP_CREATION_PROBABILITY = 0.012;
     private static final double INFLUENCER_CREATION_PROBABILITY = 0.004;
+    private static final double GROK_CORRUPTION_PROBABILITY = 0.001;
 
     private SimulationRules() {
     }
@@ -35,7 +36,10 @@ public class SimulationRules {
         CellState current = grid[row][col];
 
         if (current == CellState.GROK) {
-            return current;
+            double chance = deterministicRandom(config.getSeed(), generation, randomRow, col, 8);
+            return hasSpreaderNeighbor(grid, row, col) && chance < GROK_CORRUPTION_PROBABILITY
+                    ? CellState.SPREADER
+                    : CellState.GROK;
         }
 
         if (current == CellState.WHATSAPP_GROUP) {
@@ -59,6 +63,10 @@ public class SimulationRules {
 
         double spreadProbability = spreadProbability(grid, row, col, config);
         if (spreadProbability > 0) {
+            if (wasNeutralizedByGrok(grid, row, col, generation, config, randomRow)) {
+                return CellState.IGNORANT;
+            }
+
             CellState amplificationAgent = maybeCreateAmplificationAgent(grid, row, col, generation, config, randomRow);
             if (amplificationAgent != CellState.IGNORANT) {
                 return amplificationAgent;
@@ -85,7 +93,13 @@ public class SimulationRules {
                                                int generation,
                                                SimulationConfig config,
                                                int randomRow) {
-        return false;
+        if (grid[row][col] != CellState.IGNORANT || spreadProbability(grid, row, col, config) <= 0) {
+            return false;
+        }
+
+        double chance = deterministicRandom(config.getSeed(), generation, randomRow, col, 9);
+        return hasNeighborWithState(grid, row, col, CellState.GROK, 1)
+                && chance < config.getGrokCorrectionProbability();
     }
 
     private static boolean hasSpreaderNeighbor(CellState[][] grid, int row, int col) {
@@ -110,6 +124,9 @@ public class SimulationRules {
         }
         if (influencerBoost) {
             probability += INFLUENCER_SPREAD_BONUS;
+        }
+        if (hasNeighborWithState(grid, row, col, CellState.GROK, 1)) {
+            probability *= config.getGrokInfluenceReductionFactor();
         }
 
         return Math.min(MAX_SPREAD_PROBABILITY, probability);

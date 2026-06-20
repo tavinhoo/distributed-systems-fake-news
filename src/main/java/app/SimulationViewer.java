@@ -47,8 +47,8 @@ public class SimulationViewer extends Application {
     private static final String MODE_DISTRIBUTED = "Distribuida RMI";
     private static final String EXECUTION_VISUAL = "Visual";
     private static final String EXECUTION_BENCHMARK = "Benchmark";
-    private static final int ROWS = 500;
-    private static final int COLUMNS = 500;
+    private static final int ROWS = 1000;
+    private static final int COLUMNS = 1000;
     private static final int GENERATIONS = 500;
     private static final int THREADS = 12;
     private static final int RMI_WORKERS = 2;
