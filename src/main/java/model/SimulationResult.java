@@ -8,8 +8,10 @@ public class SimulationResult {
     private final int spreaderCount;
     private final int inactiveCount;
     private final int grokCount;
-    private final int whatsAppGroupCount;
+    private final int botCount;
     private final int influencerCount;
+    private final int echoChamberCount;
+    private final int factCheckerCount;
     private final int journalistCount;
     private final int neutralizedByGrokCount;
 
@@ -20,8 +22,10 @@ public class SimulationResult {
                             int spreaderCount,
                             int inactiveCount,
                             int grokCount,
-                            int whatsAppGroupCount,
+                            int botCount,
                             int influencerCount,
+                            int echoChamberCount,
+                            int factCheckerCount,
                             int journalistCount,
                             int neutralizedByGrokCount) {
         this.finalGrid = finalGrid;
@@ -31,8 +35,10 @@ public class SimulationResult {
         this.spreaderCount = spreaderCount;
         this.inactiveCount = inactiveCount;
         this.grokCount = grokCount;
-        this.whatsAppGroupCount = whatsAppGroupCount;
+        this.botCount = botCount;
         this.influencerCount = influencerCount;
+        this.echoChamberCount = echoChamberCount;
+        this.factCheckerCount = factCheckerCount;
         this.journalistCount = journalistCount;
         this.neutralizedByGrokCount = neutralizedByGrokCount;
     }
@@ -65,12 +71,20 @@ public class SimulationResult {
         return grokCount;
     }
 
-    public int getWhatsAppGroupCount() {
-        return whatsAppGroupCount;
+    public int getBotCount() {
+        return botCount;
     }
 
     public int getInfluencerCount() {
         return influencerCount;
+    }
+
+    public int getEchoChamberCount() {
+        return echoChamberCount;
+    }
+
+    public int getFactCheckerCount() {
+        return factCheckerCount;
     }
 
     public int getJournalistCount() {

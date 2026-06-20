@@ -185,7 +185,8 @@ public class BenchmarkRunner {
                 config.getRows(), config.getColumns(), config.getGenerations(),
                 config.getInitialSpreaderRate(), units, totalMillis, speedup, efficiency,
                 result.getIgnorantCount(), result.getSpreaderCount(), result.getInactiveCount(),
-                result.getGrokCount(), result.getWhatsAppGroupCount(), result.getInfluencerCount(),
+                result.getGrokCount(), result.getBotCount(), result.getInfluencerCount(),
+                result.getEchoChamberCount(), result.getFactCheckerCount(),
                 result.getJournalistCount(),
                 result.getNeutralizedByGrokCount());
     }
@@ -221,8 +222,10 @@ public class BenchmarkRunner {
                 && expected.getSpreaderCount() == current.getSpreaderCount()
                 && expected.getInactiveCount() == current.getInactiveCount()
                 && expected.getGrokCount() == current.getGrokCount()
-                && expected.getWhatsAppGroupCount() == current.getWhatsAppGroupCount()
+                && expected.getBotCount() == current.getBotCount()
                 && expected.getInfluencerCount() == current.getInfluencerCount()
+                && expected.getEchoChamberCount() == current.getEchoChamberCount()
+                && expected.getFactCheckerCount() == current.getFactCheckerCount()
                 && expected.getJournalistCount() == current.getJournalistCount()
                 && expected.getNeutralizedByGrokCount() == current.getNeutralizedByGrokCount();
 
@@ -241,14 +244,16 @@ public class BenchmarkRunner {
 
         System.out.println();
         System.out.println("Comparacao social sequencial:");
-        System.out.printf("Com GROK:    IGNORANT=%d, SPREADER=%d, INACTIVE=%d, GROK=%d, WHATSAPP=%d, INFLUENCER=%d, JOURNALIST=%d, neutralizados=%d%n",
+        System.out.printf("Com GROK:    IGNORANT=%d, SPREADER=%d, INACTIVE=%d, GROK=%d, BOT=%d, INFLUENCER=%d, ECHO=%d, FACT_CHECKER=%d, JOURNALIST=%d, neutralizados=%d%n",
                 withGrok.getIgnorantCount(), withGrok.getSpreaderCount(), withGrok.getInactiveCount(),
-                withGrok.getGrokCount(), withGrok.getWhatsAppGroupCount(), withGrok.getInfluencerCount(),
+                withGrok.getGrokCount(), withGrok.getBotCount(), withGrok.getInfluencerCount(),
+                withGrok.getEchoChamberCount(), withGrok.getFactCheckerCount(),
                 withGrok.getJournalistCount(),
                 withGrok.getNeutralizedByGrokCount());
-        System.out.printf("Sem GROK:    IGNORANT=%d, SPREADER=%d, INACTIVE=%d, GROK=%d, WHATSAPP=%d, INFLUENCER=%d, JOURNALIST=%d, neutralizados=%d%n",
+        System.out.printf("Sem GROK:    IGNORANT=%d, SPREADER=%d, INACTIVE=%d, GROK=%d, BOT=%d, INFLUENCER=%d, ECHO=%d, FACT_CHECKER=%d, JOURNALIST=%d, neutralizados=%d%n",
                 noGrok.getIgnorantCount(), noGrok.getSpreaderCount(), noGrok.getInactiveCount(),
-                noGrok.getGrokCount(), noGrok.getWhatsAppGroupCount(), noGrok.getInfluencerCount(),
+                noGrok.getGrokCount(), noGrok.getBotCount(), noGrok.getInfluencerCount(),
+                noGrok.getEchoChamberCount(), noGrok.getFactCheckerCount(),
                 noGrok.getJournalistCount(),
                 noGrok.getNeutralizedByGrokCount());
     }

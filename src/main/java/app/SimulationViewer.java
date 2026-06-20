@@ -67,8 +67,10 @@ public class SimulationViewer extends Application {
     private final Label spreaderLabel = new Label();
     private final Label inactiveLabel = new Label();
     private final Label grokLabel = new Label();
-    private final Label whatsAppGroupLabel = new Label();
+    private final Label botLabel = new Label();
     private final Label influencerLabel = new Label();
+    private final Label echoChamberLabel = new Label();
+    private final Label factCheckerLabel = new Label();
     private final Label journalistLabel = new Label();
     private final Label progressPercentLabel = new Label("0%");
     private final Label resultModeLabel = new Label("-");
@@ -83,8 +85,10 @@ public class SimulationViewer extends Application {
     private final XYChart.Series<Number, Number> spreaderSeries = new XYChart.Series<>();
     private final XYChart.Series<Number, Number> inactiveSeries = new XYChart.Series<>();
     private final XYChart.Series<Number, Number> grokSeries = new XYChart.Series<>();
-    private final XYChart.Series<Number, Number> whatsAppGroupSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> botSeries = new XYChart.Series<>();
     private final XYChart.Series<Number, Number> influencerSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> echoChamberSeries = new XYChart.Series<>();
+    private final XYChart.Series<Number, Number> factCheckerSeries = new XYChart.Series<>();
     private final XYChart.Series<Number, Number> journalistSeries = new XYChart.Series<>();
     private final ComboBox<String> modeBox = new ComboBox<>();
     private final ComboBox<String> executionBox = new ComboBox<>();
@@ -133,15 +137,19 @@ public class SimulationViewer extends Application {
         spreaderSeries.setName("Espalhadores");
         inactiveSeries.setName("Inativos");
         grokSeries.setName("GROK");
-        whatsAppGroupSeries.setName("Grupos WhatsApp");
+        botSeries.setName("Bots");
         influencerSeries.setName("Influenciadores");
+        echoChamberSeries.setName("Bolhas");
+        factCheckerSeries.setName("Checadores");
         journalistSeries.setName("Jornalistas");
         stateChart.getData().add(ignorantSeries);
         stateChart.getData().add(spreaderSeries);
         stateChart.getData().add(inactiveSeries);
         stateChart.getData().add(grokSeries);
-        stateChart.getData().add(whatsAppGroupSeries);
+        stateChart.getData().add(botSeries);
         stateChart.getData().add(influencerSeries);
+        stateChart.getData().add(echoChamberSeries);
+        stateChart.getData().add(factCheckerSeries);
         stateChart.getData().add(journalistSeries);
     }
 
@@ -751,11 +759,17 @@ public class SimulationViewer extends Application {
         if (state == CellState.GROK) {
             return Color.web("#00e676");
         }
-        if (state == CellState.WHATSAPP_GROUP) {
+        if (state == CellState.BOT) {
             return Color.web("#ffab00");
         }
         if (state == CellState.INFLUENCER) {
             return Color.web("#d500f9");
+        }
+        if (state == CellState.ECHO_CHAMBER) {
+            return Color.web("#f97316");
+        }
+        if (state == CellState.FACT_CHECKER) {
+            return Color.web("#22c55e");
         }
         if (state == CellState.JOURNALIST) {
             return Color.web("#06b6d4");
@@ -835,8 +849,10 @@ public class SimulationViewer extends Application {
         int spreader = 0;
         int inactive = 0;
         int grok = 0;
-        int whatsAppGroup = 0;
+        int bot = 0;
         int influencer = 0;
+        int echoChamber = 0;
+        int factChecker = 0;
         int journalist = 0;
 
         for (CellState[] row : currentGrid) {
@@ -849,10 +865,14 @@ public class SimulationViewer extends Application {
                     inactive++;
                 } else if (state == CellState.GROK) {
                     grok++;
-                } else if (state == CellState.WHATSAPP_GROUP) {
-                    whatsAppGroup++;
+                } else if (state == CellState.BOT) {
+                    bot++;
                 } else if (state == CellState.INFLUENCER) {
                     influencer++;
+                } else if (state == CellState.ECHO_CHAMBER) {
+                    echoChamber++;
+                } else if (state == CellState.FACT_CHECKER) {
+                    factChecker++;
                 } else {
                     journalist++;
                 }
@@ -866,28 +886,35 @@ public class SimulationViewer extends Application {
         spreaderLabel.setText("Espalhadores: " + spreader);
         inactiveLabel.setText("Inativos: " + inactive);
         grokLabel.setText("GROK: " + grok);
-        whatsAppGroupLabel.setText("Grupos WhatsApp: " + whatsAppGroup);
+        botLabel.setText("Bots: " + bot);
         influencerLabel.setText("Influenciadores: " + influencer);
+        echoChamberLabel.setText("Bolhas: " + echoChamber);
+        factCheckerLabel.setText("Checadores: " + factChecker);
         journalistLabel.setText("Jornalistas: " + journalist);
         progressBar.setProgress((double) generation / config.getGenerations());
         progressPercentLabel.setText(String.format("%.0f%%", 100.0 * generation / config.getGenerations()));
-        updateStateRanking(ignorant, spreader, inactive, grok, whatsAppGroup, influencer, journalist);
+        updateStateRanking(ignorant, spreader, inactive, grok, bot, influencer,
+                echoChamber, factChecker, journalist);
     }
 
     private void updateStateRanking(int ignorant,
                                     int spreader,
                                     int inactive,
                                     int grok,
-                                    int whatsAppGroup,
+                                    int bot,
                                     int influencer,
+                                    int echoChamber,
+                                    int factChecker,
                                     int journalist) {
         List<StateCount> counts = new ArrayList<>();
         counts.add(new StateCount(ignorantLabel, "Ignorantes", CellState.IGNORANT, ignorant));
         counts.add(new StateCount(spreaderLabel, "Espalhadores", CellState.SPREADER, spreader));
         counts.add(new StateCount(inactiveLabel, "Inativos", CellState.INACTIVE, inactive));
         counts.add(new StateCount(grokLabel, "GROK", CellState.GROK, grok));
-        counts.add(new StateCount(whatsAppGroupLabel, "Grupos WhatsApp", CellState.WHATSAPP_GROUP, whatsAppGroup));
+        counts.add(new StateCount(botLabel, "Bots", CellState.BOT, bot));
         counts.add(new StateCount(influencerLabel, "Influenciadores", CellState.INFLUENCER, influencer));
+        counts.add(new StateCount(echoChamberLabel, "Bolhas", CellState.ECHO_CHAMBER, echoChamber));
+        counts.add(new StateCount(factCheckerLabel, "Checadores", CellState.FACT_CHECKER, factChecker));
         counts.add(new StateCount(journalistLabel, "Jornalistas", CellState.JOURNALIST, journalist));
 
         counts.sort(Comparator.comparingInt(StateCount::count).reversed());
@@ -905,8 +932,10 @@ public class SimulationViewer extends Application {
         spreaderSeries.getData().clear();
         inactiveSeries.getData().clear();
         grokSeries.getData().clear();
-        whatsAppGroupSeries.getData().clear();
+        botSeries.getData().clear();
         influencerSeries.getData().clear();
+        echoChamberSeries.getData().clear();
+        factCheckerSeries.getData().clear();
         journalistSeries.getData().clear();
         updateChart();
     }
@@ -916,8 +945,10 @@ public class SimulationViewer extends Application {
         int spreader = 0;
         int inactive = 0;
         int grok = 0;
-        int whatsAppGroup = 0;
+        int bot = 0;
         int influencer = 0;
+        int echoChamber = 0;
+        int factChecker = 0;
         int journalist = 0;
 
         for (CellState[] row : currentGrid) {
@@ -930,10 +961,14 @@ public class SimulationViewer extends Application {
                     inactive++;
                 } else if (state == CellState.GROK) {
                     grok++;
-                } else if (state == CellState.WHATSAPP_GROUP) {
-                    whatsAppGroup++;
+                } else if (state == CellState.BOT) {
+                    bot++;
                 } else if (state == CellState.INFLUENCER) {
                     influencer++;
+                } else if (state == CellState.ECHO_CHAMBER) {
+                    echoChamber++;
+                } else if (state == CellState.FACT_CHECKER) {
+                    factChecker++;
                 } else {
                     journalist++;
                 }
@@ -944,8 +979,10 @@ public class SimulationViewer extends Application {
         spreaderSeries.getData().add(new XYChart.Data<>(generation, spreader));
         inactiveSeries.getData().add(new XYChart.Data<>(generation, inactive));
         grokSeries.getData().add(new XYChart.Data<>(generation, grok));
-        whatsAppGroupSeries.getData().add(new XYChart.Data<>(generation, whatsAppGroup));
+        botSeries.getData().add(new XYChart.Data<>(generation, bot));
         influencerSeries.getData().add(new XYChart.Data<>(generation, influencer));
+        echoChamberSeries.getData().add(new XYChart.Data<>(generation, echoChamber));
+        factCheckerSeries.getData().add(new XYChart.Data<>(generation, factChecker));
         journalistSeries.getData().add(new XYChart.Data<>(generation, journalist));
     }
 

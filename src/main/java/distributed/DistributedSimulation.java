@@ -30,10 +30,11 @@ public class DistributedSimulation {
 
         SimulationResult result = new DistributedSimulation(addresses).run(initialGrid, config);
         System.out.printf("Distribuida concluida em %.3f ms%n", Timer.toMillis(result.getElapsedNanos()));
-        System.out.printf("IGNORANT=%d, SPREADER=%d, INACTIVE=%d, GROK=%d, WHATSAPP=%d, INFLUENCER=%d, JOURNALIST=%d%n",
+        System.out.printf("IGNORANT=%d, SPREADER=%d, INACTIVE=%d, GROK=%d, BOT=%d, INFLUENCER=%d, ECHO=%d, FACT_CHECKER=%d, JOURNALIST=%d%n",
                 result.getIgnorantCount(), result.getSpreaderCount(),
                 result.getInactiveCount(), result.getGrokCount(),
-                result.getWhatsAppGroupCount(), result.getInfluencerCount(),
+                result.getBotCount(), result.getInfluencerCount(),
+                result.getEchoChamberCount(), result.getFactCheckerCount(),
                 result.getJournalistCount());
         System.out.println("Neutralizados por influencia GROK: " + result.getNeutralizedByGrokCount());
     }

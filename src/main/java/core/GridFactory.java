@@ -19,20 +19,35 @@ public class GridFactory {
                 if (chance < config.getInitialGrokPercentage()) {
                     grid[row][col] = CellState.GROK;
                 } else if (chance < config.getInitialGrokPercentage()
-                        + config.getInitialWhatsAppGroupPercentage()) {
-                    grid[row][col] = CellState.WHATSAPP_GROUP;
+                        + config.getInitialBotPercentage()) {
+                    grid[row][col] = CellState.BOT;
                 } else if (chance < config.getInitialGrokPercentage()
-                        + config.getInitialWhatsAppGroupPercentage()
+                        + config.getInitialBotPercentage()
                         + config.getInitialInfluencerPercentage()) {
                     grid[row][col] = CellState.INFLUENCER;
                 } else if (chance < config.getInitialGrokPercentage()
-                        + config.getInitialWhatsAppGroupPercentage()
+                        + config.getInitialBotPercentage()
                         + config.getInitialInfluencerPercentage()
+                        + config.getInitialEchoChamberPercentage()) {
+                    grid[row][col] = CellState.ECHO_CHAMBER;
+                } else if (chance < config.getInitialGrokPercentage()
+                        + config.getInitialBotPercentage()
+                        + config.getInitialInfluencerPercentage()
+                        + config.getInitialEchoChamberPercentage()
+                        + config.getInitialFactCheckerPercentage()) {
+                    grid[row][col] = CellState.FACT_CHECKER;
+                } else if (chance < config.getInitialGrokPercentage()
+                        + config.getInitialBotPercentage()
+                        + config.getInitialInfluencerPercentage()
+                        + config.getInitialEchoChamberPercentage()
+                        + config.getInitialFactCheckerPercentage()
                         + config.getInitialJournalistPercentage()) {
                     grid[row][col] = CellState.JOURNALIST;
                 } else if (chance < config.getInitialGrokPercentage()
-                        + config.getInitialWhatsAppGroupPercentage()
+                        + config.getInitialBotPercentage()
                         + config.getInitialInfluencerPercentage()
+                        + config.getInitialEchoChamberPercentage()
+                        + config.getInitialFactCheckerPercentage()
                         + config.getInitialJournalistPercentage()
                         + config.getInitialSpreaderRate()) {
                     grid[row][col] = CellState.SPREADER;

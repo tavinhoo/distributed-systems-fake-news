@@ -7,7 +7,9 @@ public enum CellState implements Serializable {
     SPREADER,
     INACTIVE,
     GROK,
-    WHATSAPP_GROUP,
+    BOT,
     INFLUENCER,
+    ECHO_CHAMBER,
+    FACT_CHECKER,
     JOURNALIST
 }

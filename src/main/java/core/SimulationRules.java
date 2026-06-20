@@ -7,17 +7,24 @@ import java.util.Random;
 
 public class SimulationRules {
     public static final int MAX_INFLUENCE_RADIUS = 3;
-    private static final double WHATSAPP_SPREAD_BONUS = 0.05;
+    private static final double BOT_SPREAD_BONUS = 0.06;
     private static final double INFLUENCER_SPREAD_BONUS = 0.12;
+    private static final double ECHO_CHAMBER_SPREAD_BONUS = 0.04;
+    private static final double FACT_CHECKER_SPREAD_REDUCTION_FACTOR = 0.78;
     private static final double JOURNALIST_SPREAD_REDUCTION_FACTOR = 0.72;
     private static final double MAX_SPREAD_PROBABILITY = 0.27;
-    private static final double WHATSAPP_DECAY_PROBABILITY = 0.010;
+    private static final double BOT_DECAY_PROBABILITY = 0.014;
     private static final double INFLUENCER_DECAY_PROBABILITY = 0.006;
+    private static final double ECHO_CHAMBER_DECAY_PROBABILITY = 0.003;
+    private static final double FACT_CHECKER_DECAY_PROBABILITY = 0.006;
     private static final double JOURNALIST_DECAY_PROBABILITY = 0.004;
-    private static final double WHATSAPP_CREATION_PROBABILITY = 0.012;
+    private static final double BOT_CREATION_PROBABILITY = 0.010;
     private static final double INFLUENCER_CREATION_PROBABILITY = 0.004;
+    private static final double ECHO_CHAMBER_CREATION_PROBABILITY = 0.003;
     private static final double GROK_CORRUPTION_PROBABILITY = 0.001;
     private static final double GROK_REHABILITATION_PROBABILITY = 0.0004;
+    private static final double FACT_CHECKER_NEUTRALIZATION_PROBABILITY = 0.08;
+    private static final double FACT_CHECKER_CORRECTION_PROBABILITY = 0.0025;
     private static final double JOURNALIST_CORRECTION_PROBABILITY = 0.004;
 
     private SimulationRules() {
@@ -46,14 +53,24 @@ public class SimulationRules {
                     : CellState.GROK;
         }
 
-        if (current == CellState.WHATSAPP_GROUP) {
+        if (current == CellState.BOT) {
             double chance = deterministicRandom(config.getSeed(), generation, randomRow, col, 4);
-            return chance < WHATSAPP_DECAY_PROBABILITY ? CellState.INACTIVE : CellState.WHATSAPP_GROUP;
+            return chance < BOT_DECAY_PROBABILITY ? CellState.INACTIVE : CellState.BOT;
         }
 
         if (current == CellState.INFLUENCER) {
             double chance = deterministicRandom(config.getSeed(), generation, randomRow, col, 5);
             return chance < INFLUENCER_DECAY_PROBABILITY ? CellState.INACTIVE : CellState.INFLUENCER;
+        }
+
+        if (current == CellState.ECHO_CHAMBER) {
+            double chance = deterministicRandom(config.getSeed(), generation, randomRow, col, 13);
+            return chance < ECHO_CHAMBER_DECAY_PROBABILITY ? CellState.INACTIVE : CellState.ECHO_CHAMBER;
+        }
+
+        if (current == CellState.FACT_CHECKER) {
+            double chance = deterministicRandom(config.getSeed(), generation, randomRow, col, 14);
+            return chance < FACT_CHECKER_DECAY_PROBABILITY ? CellState.INACTIVE : CellState.FACT_CHECKER;
         }
 
         if (current == CellState.JOURNALIST) {
@@ -78,13 +95,26 @@ public class SimulationRules {
                 return CellState.INACTIVE;
             }
 
+            double factCheckerChance = deterministicRandom(config.getSeed(), generation, randomRow, col, 15);
+            if (hasNeighborWithState(grid, row, col, CellState.FACT_CHECKER, 1)
+                    && factCheckerChance < FACT_CHECKER_CORRECTION_PROBABILITY) {
+                return CellState.INACTIVE;
+            }
+
             double chance = deterministicRandom(config.getSeed(), generation, randomRow, col, 1);
-            return chance < config.getInactiveProbability() ? CellState.INACTIVE : CellState.SPREADER;
+            double inactiveProbability = config.getInactiveProbability();
+            if (hasNeighborWithState(grid, row, col, CellState.ECHO_CHAMBER, 1)) {
+                inactiveProbability *= 0.72;
+            }
+            return chance < inactiveProbability ? CellState.INACTIVE : CellState.SPREADER;
         }
 
         double spreadProbability = spreadProbability(grid, row, col, config);
         if (spreadProbability > 0) {
             if (wasNeutralizedByGrok(grid, row, col, generation, config, randomRow)) {
+                return CellState.IGNORANT;
+            }
+            if (wasNeutralizedByFactChecker(grid, row, col, generation, config, randomRow)) {
                 return CellState.IGNORANT;
             }
 
@@ -127,27 +157,45 @@ public class SimulationRules {
         return hasNeighborWithState(grid, row, col, CellState.SPREADER, 1);
     }
 
+    private static boolean wasNeutralizedByFactChecker(CellState[][] grid,
+                                                       int row,
+                                                       int col,
+                                                       int generation,
+                                                       SimulationConfig config,
+                                                       int randomRow) {
+        double chance = deterministicRandom(config.getSeed(), generation, randomRow, col, 16);
+        return hasNeighborWithState(grid, row, col, CellState.FACT_CHECKER, 1)
+                && chance < FACT_CHECKER_NEUTRALIZATION_PROBABILITY;
+    }
+
     private static double spreadProbability(CellState[][] grid,
                                             int row,
                                             int col,
                                             SimulationConfig config) {
         boolean directSpreader = hasSpreaderNeighbor(grid, row, col);
-        boolean whatsAppBoost = isInfluencedByWhatsAppGroup(grid, row, col);
+        boolean botBoost = isInfluencedByBot(grid, row, col);
         boolean influencerBoost = isInfluencedByInfluencer(grid, row, col);
+        boolean echoChamberBoost = isInfluencedByEchoChamber(grid, row, col);
 
-        if (!directSpreader && !whatsAppBoost && !influencerBoost) {
+        if (!directSpreader && !botBoost && !influencerBoost && !echoChamberBoost) {
             return 0.0;
         }
 
         double probability = config.getSpreadProbability();
-        if (whatsAppBoost) {
-            probability += WHATSAPP_SPREAD_BONUS;
+        if (botBoost) {
+            probability += BOT_SPREAD_BONUS;
         }
         if (influencerBoost) {
             probability += INFLUENCER_SPREAD_BONUS;
         }
+        if (echoChamberBoost) {
+            probability += ECHO_CHAMBER_SPREAD_BONUS;
+        }
         if (hasNeighborWithState(grid, row, col, CellState.GROK, 1)) {
             probability *= config.getGrokInfluenceReductionFactor();
+        }
+        if (hasNeighborWithState(grid, row, col, CellState.FACT_CHECKER, 1)) {
+            probability *= FACT_CHECKER_SPREAD_REDUCTION_FACTOR;
         }
         if (hasNeighborWithState(grid, row, col, CellState.JOURNALIST, 1)) {
             probability *= JOURNALIST_SPREAD_REDUCTION_FACTOR;
@@ -171,22 +219,32 @@ public class SimulationRules {
             return CellState.INFLUENCER;
         }
 
-        double whatsAppChance = deterministicRandom(config.getSeed(), generation, randomRow, col, 7);
-        if (whatsAppChance < WHATSAPP_CREATION_PROBABILITY) {
-            return CellState.WHATSAPP_GROUP;
+        double echoChance = deterministicRandom(config.getSeed(), generation, randomRow, col, 17);
+        if (echoChance < ECHO_CHAMBER_CREATION_PROBABILITY) {
+            return CellState.ECHO_CHAMBER;
+        }
+
+        double botChance = deterministicRandom(config.getSeed(), generation, randomRow, col, 7);
+        if (botChance < BOT_CREATION_PROBABILITY) {
+            return CellState.BOT;
         }
 
         return CellState.IGNORANT;
     }
 
-    private static boolean isInfluencedByWhatsAppGroup(CellState[][] grid, int row, int col) {
-        return hasNeighborWithState(grid, row, col, CellState.WHATSAPP_GROUP, 1)
+    private static boolean isInfluencedByBot(CellState[][] grid, int row, int col) {
+        return hasNeighborWithState(grid, row, col, CellState.BOT, 1)
                 && hasNeighborWithState(grid, row, col, CellState.SPREADER, 2);
     }
 
     private static boolean isInfluencedByInfluencer(CellState[][] grid, int row, int col) {
         return hasNeighborWithState(grid, row, col, CellState.INFLUENCER, 2)
                 && hasNeighborWithState(grid, row, col, CellState.SPREADER, 3);
+    }
+
+    private static boolean isInfluencedByEchoChamber(CellState[][] grid, int row, int col) {
+        return hasNeighborWithState(grid, row, col, CellState.ECHO_CHAMBER, 1)
+                && hasNeighborWithState(grid, row, col, CellState.SPREADER, 2);
     }
 
     private static boolean hasNeighborWithState(CellState[][] grid,
