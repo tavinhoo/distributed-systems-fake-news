@@ -12,6 +12,10 @@ public class MatrixWorkerImpl extends UnicastRemoteObject implements MatrixWorke
         super();
     }
 
+    public MatrixWorkerImpl(int exportPort) throws RemoteException {
+        super(exportPort);
+    }
+
     @Override
     public WorkerResult computeRange(WorkerTask task) throws RemoteException {
         SimulationConfig config = task.getConfig();

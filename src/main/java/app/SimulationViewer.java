@@ -3,8 +3,6 @@ package app;
 import core.GridFactory;
 import core.SimulationRules;
 import distributed.DistributedSimulation;
-import distributed.MatrixWorkerImpl;
-import distributed.WorkerServer;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -13,6 +11,7 @@ import javafx.concurrent.Task;
 import javafx.geometry.Pos;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
+import javafx.scene.Node;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.chart.LineChart;
@@ -22,6 +21,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -34,9 +34,6 @@ import javafx.util.Duration;
 import model.CellState;
 import model.SimulationConfig;
 
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
-import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -52,8 +49,7 @@ public class SimulationViewer extends Application {
     private static final int COLUMNS = 1000;
     private static final int GENERATIONS = 500;
     private static final int THREADS = 12;
-    private static final int RMI_WORKERS = 2;
-    private static final int RMI_BASE_PORT = 9600;
+    private static final String DEFAULT_RMI_WORKERS = "127.0.0.1:9100, 127.0.0.1:9101";
     private static final double MIN_GRID_ZOOM = 1.0;
     private static final double MAX_GRID_ZOOM = 32.0;
     private static final double AGGREGATED_BLOCK_TARGET_PIXELS = 6.0;
@@ -95,7 +91,7 @@ public class SimulationViewer extends Application {
     private final XYChart.Series<Number, Number> journalistSeries = new XYChart.Series<>();
     private final ComboBox<String> modeBox = new ComboBox<>();
     private final ComboBox<String> executionBox = new ComboBox<>();
-    private final List<LocalWorker> localWorkers = new ArrayList<>();
+    private final TextField workerAddressesField = new TextField(DEFAULT_RMI_WORKERS);
     private Button runButton;
     private Button stepButton;
 
@@ -118,6 +114,8 @@ public class SimulationViewer extends Application {
     private Timeline didacticTimeline;
     private Task<BenchmarkOutcome> benchmarkTask;
     private DistributedSimulation distributedSimulation;
+    private String distributedWorkerList;
+    private String activeWorkerAddresses;
     private boolean didacticStepRunning;
     private CellState[][] didacticSourceGrid;
     private CellState[][] didacticNextGrid;
@@ -177,6 +175,14 @@ public class SimulationViewer extends Application {
         executionBox.setPrefWidth(190);
         styleComboBox(executionBox);
 
+        workerAddressesField.setPrefWidth(300);
+        workerAddressesField.setPromptText("host:porta, host:porta:nome");
+        workerAddressesField.textProperty().addListener((observable, oldValue, newValue) -> {
+            distributedSimulation = null;
+            distributedWorkerList = null;
+        });
+        styleTextField(workerAddressesField);
+
         runButton = new Button("Iniciar");
         stepButton = new Button("Passar");
         Button resetButton = new Button("Reiniciar");
@@ -195,8 +201,9 @@ public class SimulationViewer extends Application {
 
         VBox processingControl = controlGroup("Processamento", modeBox);
         VBox executionControl = controlGroup("Execução", executionBox);
+        VBox workersControl = controlGroup("Workers RMI", workerAddressesField);
 
-        HBox selectors = new HBox(10, processingControl, executionControl);
+        HBox selectors = new HBox(10, processingControl, executionControl, workersControl);
         selectors.setAlignment(Pos.BOTTOM_LEFT);
 
         HBox actions = new HBox(8, runButton, stepButton, resetButton);
@@ -274,7 +281,7 @@ public class SimulationViewer extends Application {
         Scene scene = new Scene(root);
         scene.getStylesheets().add(getClass().getResource("/simulation-viewer.css").toExternalForm());
         stage.setScene(scene);
-        stage.setOnCloseRequest(event -> stopWorkers());
+        stage.setOnCloseRequest(event -> stopRunningTasks());
         stage.show();
     }
 
@@ -305,8 +312,10 @@ public class SimulationViewer extends Application {
                 activeMode = modeBox.getValue();
             }
             activeExecution = executionBox.getValue();
+            activeWorkerAddresses = workerAddressesField.getText().trim();
             modeBox.setDisable(true);
             executionBox.setDisable(true);
+            workerAddressesField.setDisable(true);
             runSegmentStartNanos = System.nanoTime();
             timeline.play();
             if (didacticStepRunning) {
@@ -333,12 +342,14 @@ public class SimulationViewer extends Application {
         gridViewColumn = 0;
         activeMode = null;
         activeExecution = null;
+        activeWorkerAddresses = null;
         config = new SimulationConfig(ROWS, COLUMNS, GENERATIONS, 0.03, 0.03,
                 0.015, 0.01, 0.25, 0.50, 42L);
         currentGrid = GridFactory.createInitialGrid(config);
         runButton.setText("Iniciar");
         modeBox.setDisable(false);
         executionBox.setDisable(false);
+        workerAddressesField.setDisable(false);
         stepButton.setDisable(false);
         clearResults();
         clearChart();
@@ -389,8 +400,12 @@ public class SimulationViewer extends Application {
             didacticStepRunning = false;
             clearDidacticState();
             runButton.setText("Iniciar");
+            activeMode = null;
+            activeExecution = null;
+            activeWorkerAddresses = null;
             modeBox.setDisable(false);
             executionBox.setDisable(false);
+            workerAddressesField.setDisable(false);
             stepButton.setDisable(false);
             statusLabel.setText("Erro: " + exception.getMessage());
         }
@@ -403,6 +418,7 @@ public class SimulationViewer extends Application {
 
         activeMode = modeBox.getValue();
         activeExecution = EXECUTION_BENCHMARK;
+        activeWorkerAddresses = workerAddressesField.getText().trim();
         String benchmarkMode = activeMode;
         totalElapsedNanos = 0;
         runSegmentStartNanos = System.nanoTime();
@@ -410,6 +426,7 @@ public class SimulationViewer extends Application {
         clearResults();
         modeBox.setDisable(true);
         executionBox.setDisable(true);
+        workerAddressesField.setDisable(true);
         stepButton.setDisable(true);
         runButton.setText("Cancelar");
         statusLabel.setText(String.format(
@@ -448,8 +465,10 @@ public class SimulationViewer extends Application {
             updateResults(benchmarkMode);
             activeMode = null;
             activeExecution = null;
+            activeWorkerAddresses = null;
             modeBox.setDisable(false);
             executionBox.setDisable(false);
+            workerAddressesField.setDisable(false);
             stepButton.setDisable(false);
         });
 
@@ -460,8 +479,10 @@ public class SimulationViewer extends Application {
             statusLabel.setText("Benchmark cancelado na geracao " + generation + ".");
             activeMode = null;
             activeExecution = null;
+            activeWorkerAddresses = null;
             modeBox.setDisable(false);
             executionBox.setDisable(false);
+            workerAddressesField.setDisable(false);
             stepButton.setDisable(false);
         });
 
@@ -472,8 +493,10 @@ public class SimulationViewer extends Application {
             statusLabel.setText("Erro: " + (exception == null ? "falha desconhecida" : exception.getMessage()));
             activeMode = null;
             activeExecution = null;
+            activeWorkerAddresses = null;
             modeBox.setDisable(false);
             executionBox.setDisable(false);
+            workerAddressesField.setDisable(false);
             stepButton.setDisable(false);
         });
 
@@ -495,8 +518,10 @@ public class SimulationViewer extends Application {
         updateResults(selectedExecutionMode());
         activeMode = null;
         activeExecution = null;
+        activeWorkerAddresses = null;
         modeBox.setDisable(false);
         executionBox.setDisable(false);
+        workerAddressesField.setDisable(false);
         stepButton.setDisable(false);
     }
 
@@ -522,6 +547,7 @@ public class SimulationViewer extends Application {
 
         activeMode = selectedExecutionMode();
         activeExecution = EXECUTION_DIDACTIC;
+        activeWorkerAddresses = workerAddressesField.getText().trim();
         didacticSourceGrid = currentGrid;
         didacticNextGrid = copyGrid(currentGrid);
         currentGrid = copyGrid(currentGrid);
@@ -530,6 +556,7 @@ public class SimulationViewer extends Application {
         didacticStepRunning = true;
         modeBox.setDisable(true);
         executionBox.setDisable(true);
+        workerAddressesField.setDisable(true);
         stepButton.setDisable(true);
         statusLabel.setText(String.format(
                 "Visualização didática | Geração %d | %s",
@@ -603,8 +630,10 @@ public class SimulationViewer extends Application {
         if (timeline.getStatus() != Animation.Status.RUNNING) {
             activeMode = null;
             activeExecution = null;
+            activeWorkerAddresses = null;
             modeBox.setDisable(false);
             executionBox.setDisable(false);
+            workerAddressesField.setDisable(false);
         }
 
         if (generation >= config.getGenerations()) {
@@ -634,7 +663,7 @@ public class SimulationViewer extends Application {
             return;
         }
 
-        didacticWorkerCount = MODE_DISTRIBUTED.equals(mode) ? RMI_WORKERS : THREADS;
+        didacticWorkerCount = MODE_DISTRIBUTED.equals(mode) ? configuredRmiWorkerCount() : THREADS;
         didacticWorkerStartRows = new int[didacticWorkerCount];
         didacticWorkerEndRows = new int[didacticWorkerCount];
         didacticWorkerNextRows = new int[didacticWorkerCount];
@@ -654,6 +683,10 @@ public class SimulationViewer extends Application {
         }
 
         return String.format("%d regiões simultâneas em processamento", didacticWorkerCount);
+    }
+
+    private int configuredRmiWorkerCount() {
+        return DistributedSimulation.parseWorkerAddresses(workerAddressesField.getText()).size();
     }
 
     private void clearDidacticState() {
@@ -722,43 +755,25 @@ public class SimulationViewer extends Application {
     }
 
     private CellState[][] nextDistributedGeneration(CellState[][] grid, int generation) throws Exception {
-        if (distributedSimulation == null) {
-            startWorkers();
-            distributedSimulation = new DistributedSimulation(
-                    DistributedSimulation.localWorkers(RMI_WORKERS, RMI_BASE_PORT));
+        String workerList = activeWorkerAddresses == null
+                ? workerAddressesField.getText().trim()
+                : activeWorkerAddresses;
+        if (distributedSimulation == null || !workerList.equals(distributedWorkerList)) {
+            List<DistributedSimulation.WorkerAddress> addresses =
+                    DistributedSimulation.parseWorkerAddresses(workerList);
+            distributedSimulation = new DistributedSimulation(addresses);
+            distributedWorkerList = workerList;
         }
         return distributedSimulation.nextGeneration(grid, config, generation);
     }
 
-    private void startWorkers() throws Exception {
-        if (!localWorkers.isEmpty()) {
-            return;
-        }
-
-        for (int index = 0; index < RMI_WORKERS; index++) {
-            Registry registry = LocateRegistry.createRegistry(RMI_BASE_PORT + index);
-            MatrixWorkerImpl worker = new MatrixWorkerImpl();
-            registry.rebind(WorkerServer.DEFAULT_WORKER_NAME, worker);
-            localWorkers.add(new LocalWorker(registry, worker));
-        }
-    }
-
-    private void stopWorkers() {
+    private void stopRunningTasks() {
         if (benchmarkTask != null && benchmarkTask.isRunning()) {
             benchmarkTask.cancel();
         }
         didacticTimeline.stop();
         didacticStepRunning = false;
         clearDidacticState();
-        for (LocalWorker worker : localWorkers) {
-            try {
-                worker.registry().unbind(WorkerServer.DEFAULT_WORKER_NAME);
-                UnicastRemoteObject.unexportObject(worker.remote(), true);
-                UnicastRemoteObject.unexportObject(worker.registry(), true);
-            } catch (Exception ignored) {
-            }
-        }
-        localWorkers.clear();
     }
 
     private void drawGrid() {
@@ -1090,7 +1105,7 @@ public class SimulationViewer extends Application {
         return label;
     }
 
-    private VBox controlGroup(String text, ComboBox<String> control) {
+    private VBox controlGroup(String text, Node control) {
         Label label = new Label(text + ":");
         label.setStyle("-fx-text-fill: #e5e7eb; -fx-font-size: 12px; -fx-font-weight: bold;");
         VBox box = new VBox(4, label, control);
@@ -1112,6 +1127,11 @@ public class SimulationViewer extends Application {
 
     private void styleComboBox(ComboBox<String> comboBox) {
         comboBox.setStyle("-fx-background-color: #f8fafc; -fx-border-color: #94a3b8;"
+                + " -fx-border-radius: 5; -fx-background-radius: 5;");
+    }
+
+    private void styleTextField(TextField textField) {
+        textField.setStyle("-fx-background-color: #f8fafc; -fx-border-color: #94a3b8;"
                 + " -fx-border-radius: 5; -fx-background-radius: 5;");
     }
 
@@ -1312,12 +1332,9 @@ public class SimulationViewer extends Application {
             return THREADS + " threads";
         }
         if (MODE_DISTRIBUTED.equals(mode)) {
-            return RMI_WORKERS + " workers RMI";
+            return configuredRmiWorkerCount() + " workers RMI";
         }
         return "1 thread";
-    }
-
-    private record LocalWorker(Registry registry, MatrixWorkerImpl remote) {
     }
 
     private record StateCount(Label label, String name, CellState state, int count) {

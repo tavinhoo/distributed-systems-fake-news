@@ -47,6 +47,26 @@ public class DistributedSimulation {
         return addresses;
     }
 
+    public static List<WorkerAddress> parseWorkerAddresses(String workerList) {
+        if (workerList == null || workerList.trim().isEmpty()) {
+            throw new IllegalArgumentException("Informe ao menos um worker no formato host:porta.");
+        }
+
+        String[] entries = workerList.trim().split("[,;\\s]+");
+        List<WorkerAddress> addresses = new ArrayList<>();
+        for (String entry : entries) {
+            if (entry.isBlank()) {
+                continue;
+            }
+            addresses.add(parseWorkerAddress(entry));
+        }
+
+        if (addresses.isEmpty()) {
+            throw new IllegalArgumentException("Informe ao menos um worker no formato host:porta.");
+        }
+        return addresses;
+    }
+
     public SimulationResult run(CellState[][] initialGrid, SimulationConfig config) throws Exception {
         Timer timer = new Timer();
         timer.start();
@@ -166,14 +186,20 @@ public class DistributedSimulation {
 
         List<WorkerAddress> addresses = new ArrayList<>();
         for (String arg : args) {
-            String[] parts = arg.split(":");
-            if (parts.length < 2 || parts.length > 3) {
-                throw new IllegalArgumentException("Use host:porta ou host:porta:nome");
-            }
-            String name = parts.length == 3 ? parts[2] : WorkerServer.DEFAULT_WORKER_NAME;
-            addresses.add(new WorkerAddress(parts[0], Integer.parseInt(parts[1]), name));
+            addresses.add(parseWorkerAddress(arg));
         }
         return addresses;
+    }
+
+    private static WorkerAddress parseWorkerAddress(String value) {
+        String[] parts = value.split(":");
+        if (parts.length < 2 || parts.length > 3 || parts[0].isBlank() || parts[1].isBlank()) {
+            throw new IllegalArgumentException("Use host:porta ou host:porta:nome");
+        }
+        String name = parts.length == 3 && !parts[2].isBlank()
+                ? parts[2]
+                : WorkerServer.DEFAULT_WORKER_NAME;
+        return new WorkerAddress(parts[0], Integer.parseInt(parts[1]), name);
     }
 
     public record WorkerAddress(String host, int port, String name) {
