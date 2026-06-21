@@ -47,6 +47,7 @@ public class SimulationViewer extends Application {
     private static final String MODE_DISTRIBUTED = "Distribuida RMI";
     private static final String EXECUTION_VISUAL = "Visual";
     private static final String EXECUTION_BENCHMARK = "Benchmark";
+    private static final String EXECUTION_DIDACTIC = "Visualização didática";
     private static final int ROWS = 1000;
     private static final int COLUMNS = 1000;
     private static final int GENERATIONS = 500;
@@ -56,6 +57,8 @@ public class SimulationViewer extends Application {
     private static final double MIN_GRID_ZOOM = 1.0;
     private static final double MAX_GRID_ZOOM = 32.0;
     private static final double AGGREGATED_BLOCK_TARGET_PIXELS = 6.0;
+    private static final int DIDACTIC_SEQUENTIAL_ROWS_PER_FRAME = 18;
+    private static final int DIDACTIC_WORKER_ROWS_PER_FRAME = 16;
     private static final String SURFACE_DARK = "#111827";
     private static final String SURFACE_DARK_ALT = "#0f172a";
     private static final String SURFACE_LIGHT = "#f8fafc";
@@ -112,8 +115,17 @@ public class SimulationViewer extends Application {
     private double dragStartViewRow;
     private double dragStartViewColumn;
     private Timeline timeline;
+    private Timeline didacticTimeline;
     private Task<BenchmarkOutcome> benchmarkTask;
     private DistributedSimulation distributedSimulation;
+    private boolean didacticStepRunning;
+    private CellState[][] didacticSourceGrid;
+    private CellState[][] didacticNextGrid;
+    private int didacticNextRow;
+    private int didacticWorkerCount;
+    private int[] didacticWorkerStartRows = new int[0];
+    private int[] didacticWorkerEndRows = new int[0];
+    private int[] didacticWorkerNextRows = new int[0];
 
     public SimulationViewer() {
         NumberAxis generationAxis = new NumberAxis();
@@ -160,9 +172,9 @@ public class SimulationViewer extends Application {
         modeBox.setPrefWidth(170);
         styleComboBox(modeBox);
 
-        executionBox.getItems().addAll(EXECUTION_VISUAL, EXECUTION_BENCHMARK);
+        executionBox.getItems().addAll(EXECUTION_VISUAL, EXECUTION_BENCHMARK, EXECUTION_DIDACTIC);
         executionBox.setValue(EXECUTION_VISUAL);
-        executionBox.setPrefWidth(135);
+        executionBox.setPrefWidth(190);
         styleComboBox(executionBox);
 
         runButton = new Button("Iniciar");
@@ -174,6 +186,8 @@ public class SimulationViewer extends Application {
 
         timeline = new Timeline(new KeyFrame(Duration.millis(180), event -> nextStep()));
         timeline.setCycleCount(Animation.INDEFINITE);
+        didacticTimeline = new Timeline(new KeyFrame(Duration.millis(70), event -> continueDidacticStep()));
+        didacticTimeline.setCycleCount(Animation.INDEFINITE);
 
         runButton.setOnAction(event -> toggleRun(runButton));
         stepButton.setOnAction(event -> nextStep());
@@ -277,6 +291,9 @@ public class SimulationViewer extends Application {
 
         if (timeline.getStatus() == Animation.Status.RUNNING) {
             timeline.pause();
+            if (didacticStepRunning) {
+                didacticTimeline.pause();
+            }
             totalElapsedNanos += System.nanoTime() - runSegmentStartNanos;
             runSegmentStartNanos = 0;
             runButton.setText("Iniciar");
@@ -287,11 +304,14 @@ public class SimulationViewer extends Application {
             if (activeMode == null) {
                 activeMode = modeBox.getValue();
             }
-            activeExecution = EXECUTION_VISUAL;
+            activeExecution = executionBox.getValue();
             modeBox.setDisable(true);
             executionBox.setDisable(true);
             runSegmentStartNanos = System.nanoTime();
             timeline.play();
+            if (didacticStepRunning) {
+                didacticTimeline.play();
+            }
             runButton.setText("Pausar");
         }
     }
@@ -301,6 +321,9 @@ public class SimulationViewer extends Application {
             benchmarkTask.cancel();
         }
         timeline.stop();
+        didacticTimeline.stop();
+        didacticStepRunning = false;
+        clearDidacticState();
         generation = 0;
         totalElapsedNanos = 0;
         runSegmentStartNanos = 0;
@@ -333,7 +356,16 @@ public class SimulationViewer extends Application {
             return;
         }
 
+        if (didacticStepRunning) {
+            return;
+        }
+
         try {
+            if (EXECUTION_DIDACTIC.equals(selectedExecutionType())) {
+                startDidacticStep();
+                return;
+            }
+
             String mode = selectedExecutionMode();
             long generationStartNanos = System.nanoTime();
             if (MODE_PARALLEL.equals(mode)) {
@@ -353,6 +385,9 @@ public class SimulationViewer extends Application {
             }
         } catch (Exception exception) {
             timeline.stop();
+            didacticTimeline.stop();
+            didacticStepRunning = false;
+            clearDidacticState();
             runButton.setText("Iniciar");
             modeBox.setDisable(false);
             executionBox.setDisable(false);
@@ -453,6 +488,9 @@ public class SimulationViewer extends Application {
             runSegmentStartNanos = 0;
         }
         timeline.stop();
+        didacticTimeline.stop();
+        didacticStepRunning = false;
+        clearDidacticState();
         runButton.setText("Iniciar");
         updateResults(selectedExecutionMode());
         activeMode = null;
@@ -474,6 +512,166 @@ public class SimulationViewer extends Application {
             return nextDistributedGeneration(grid, generation);
         }
         return nextSequentialGeneration(grid, generation);
+    }
+
+    private void startDidacticStep() {
+        if (generation >= config.getGenerations()) {
+            finishSimulation();
+            return;
+        }
+
+        activeMode = selectedExecutionMode();
+        activeExecution = EXECUTION_DIDACTIC;
+        didacticSourceGrid = currentGrid;
+        didacticNextGrid = copyGrid(currentGrid);
+        currentGrid = copyGrid(currentGrid);
+        didacticNextRow = 0;
+        configureDidacticWorkers(activeMode);
+        didacticStepRunning = true;
+        modeBox.setDisable(true);
+        executionBox.setDisable(true);
+        stepButton.setDisable(true);
+        statusLabel.setText(String.format(
+                "Visualização didática | Geração %d | %s",
+                generation + 1,
+                didacticStatusDetail()));
+        didacticTimeline.playFromStart();
+    }
+
+    private void continueDidacticStep() {
+        if (!didacticStepRunning) {
+            didacticTimeline.stop();
+            return;
+        }
+
+        long frameStartNanos = System.nanoTime();
+        if (MODE_SEQUENTIAL.equals(activeMode)) {
+            processSequentialDidacticFrame();
+        } else {
+            processWorkerDidacticFrame();
+        }
+        computeElapsedNanos += System.nanoTime() - frameStartNanos;
+
+        drawGrid();
+        statusLabel.setText(String.format(
+                "Visualização didática | Geração %d | %s",
+                generation + 1,
+                didacticStatusDetail()));
+
+        if (isDidacticGenerationComplete()) {
+            finishDidacticStep();
+        }
+    }
+
+    private void processSequentialDidacticFrame() {
+        int endRow = Math.min(config.getRows(), didacticNextRow + DIDACTIC_SEQUENTIAL_ROWS_PER_FRAME);
+        processDidacticRows(didacticNextRow, endRow);
+        didacticNextRow = endRow;
+    }
+
+    private void processWorkerDidacticFrame() {
+        for (int workerIndex = 0; workerIndex < didacticWorkerCount; workerIndex++) {
+            int startRow = didacticWorkerNextRows[workerIndex];
+            int endRow = Math.min(
+                    didacticWorkerEndRows[workerIndex],
+                    startRow + DIDACTIC_WORKER_ROWS_PER_FRAME);
+            processDidacticRows(startRow, endRow);
+            didacticWorkerNextRows[workerIndex] = endRow;
+        }
+    }
+
+    private void processDidacticRows(int startRow, int endRow) {
+        for (int row = startRow; row < endRow; row++) {
+            for (int col = 0; col < config.getColumns(); col++) {
+                CellState nextState = SimulationRules.nextState(didacticSourceGrid, row, col, generation, config);
+                didacticNextGrid[row][col] = nextState;
+                currentGrid[row][col] = nextState;
+            }
+        }
+    }
+
+    private void finishDidacticStep() {
+        didacticTimeline.stop();
+        didacticStepRunning = false;
+        currentGrid = didacticNextGrid;
+        clearDidacticState();
+        generation++;
+        drawGrid();
+        updateStatus();
+        updateChart();
+        stepButton.setDisable(false);
+        if (timeline.getStatus() != Animation.Status.RUNNING) {
+            activeMode = null;
+            activeExecution = null;
+            modeBox.setDisable(false);
+            executionBox.setDisable(false);
+        }
+
+        if (generation >= config.getGenerations()) {
+            finishSimulation();
+        }
+    }
+
+    private boolean isDidacticGenerationComplete() {
+        if (MODE_SEQUENTIAL.equals(activeMode)) {
+            return didacticNextRow >= config.getRows();
+        }
+
+        for (int workerIndex = 0; workerIndex < didacticWorkerCount; workerIndex++) {
+            if (didacticWorkerNextRows[workerIndex] < didacticWorkerEndRows[workerIndex]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void configureDidacticWorkers(String mode) {
+        if (MODE_SEQUENTIAL.equals(mode)) {
+            didacticWorkerCount = 0;
+            didacticWorkerStartRows = new int[0];
+            didacticWorkerEndRows = new int[0];
+            didacticWorkerNextRows = new int[0];
+            return;
+        }
+
+        didacticWorkerCount = MODE_DISTRIBUTED.equals(mode) ? RMI_WORKERS : THREADS;
+        didacticWorkerStartRows = new int[didacticWorkerCount];
+        didacticWorkerEndRows = new int[didacticWorkerCount];
+        didacticWorkerNextRows = new int[didacticWorkerCount];
+
+        for (int workerIndex = 0; workerIndex < didacticWorkerCount; workerIndex++) {
+            int startRow = workerIndex * config.getRows() / didacticWorkerCount;
+            int endRow = (workerIndex + 1) * config.getRows() / didacticWorkerCount;
+            didacticWorkerStartRows[workerIndex] = startRow;
+            didacticWorkerEndRows[workerIndex] = endRow;
+            didacticWorkerNextRows[workerIndex] = startRow;
+        }
+    }
+
+    private String didacticStatusDetail() {
+        if (MODE_SEQUENTIAL.equals(activeMode)) {
+            return String.format("varredura linha %d/%d", Math.min(didacticNextRow, config.getRows()), config.getRows());
+        }
+
+        return String.format("%d regiões simultâneas em processamento", didacticWorkerCount);
+    }
+
+    private void clearDidacticState() {
+        didacticSourceGrid = null;
+        didacticNextGrid = null;
+        didacticNextRow = 0;
+        didacticWorkerCount = 0;
+        didacticWorkerStartRows = new int[0];
+        didacticWorkerEndRows = new int[0];
+        didacticWorkerNextRows = new int[0];
+    }
+
+    private CellState[][] copyGrid(CellState[][] source) {
+        CellState[][] copy = new CellState[source.length][source[0].length];
+        for (int row = 0; row < source.length; row++) {
+            System.arraycopy(source[row], 0, copy[row], 0, source[row].length);
+        }
+        return copy;
     }
 
     private CellState[][] nextSequentialGeneration() {
@@ -549,6 +747,9 @@ public class SimulationViewer extends Application {
         if (benchmarkTask != null && benchmarkTask.isRunning()) {
             benchmarkTask.cancel();
         }
+        didacticTimeline.stop();
+        didacticStepRunning = false;
+        clearDidacticState();
         for (LocalWorker worker : localWorkers) {
             try {
                 worker.registry().unbind(WorkerServer.DEFAULT_WORKER_NAME);
@@ -574,6 +775,8 @@ public class SimulationViewer extends Application {
         } else {
             drawIndividualGrid(graphics, cellSize);
         }
+
+        drawDidacticOverlay(graphics, cellSize);
 
         graphics.setStroke(Color.web("#e5e7eb"));
         graphics.setLineWidth(2);
@@ -700,6 +903,86 @@ public class SimulationViewer extends Application {
             bestIndex = ignorantIndex;
         }
         return CellState.values()[bestIndex];
+    }
+
+    private void drawDidacticOverlay(GraphicsContext graphics, double cellSize) {
+        if (!didacticStepRunning) {
+            return;
+        }
+
+        if (MODE_SEQUENTIAL.equals(activeMode)) {
+            drawDidacticSequentialOverlay(graphics, cellSize);
+        } else {
+            drawDidacticWorkerOverlay(graphics, cellSize);
+        }
+        graphics.setGlobalAlpha(1.0);
+    }
+
+    private void drawDidacticSequentialOverlay(GraphicsContext graphics, double cellSize) {
+        int sweepStart = didacticNextRow;
+        int sweepEnd = Math.min(config.getRows(), didacticNextRow + DIDACTIC_SEQUENTIAL_ROWS_PER_FRAME);
+
+        graphics.setGlobalAlpha(0.20);
+        graphics.setFill(Color.web("#facc15"));
+        fillVisibleRowRange(graphics, 0, didacticNextRow, cellSize);
+
+        graphics.setGlobalAlpha(0.45);
+        graphics.setFill(Color.web("#22d3ee"));
+        fillVisibleRowRange(graphics, sweepStart, sweepEnd, cellSize);
+    }
+
+    private void drawDidacticWorkerOverlay(GraphicsContext graphics, double cellSize) {
+        Color[] colors = {
+                Color.web("#22d3ee"),
+                Color.web("#facc15"),
+                Color.web("#fb7185"),
+                Color.web("#a78bfa"),
+                Color.web("#34d399"),
+                Color.web("#f97316")
+        };
+
+        for (int workerIndex = 0; workerIndex < didacticWorkerCount; workerIndex++) {
+            Color color = colors[workerIndex % colors.length];
+            int startRow = didacticWorkerStartRows[workerIndex];
+            int currentRow = didacticWorkerNextRows[workerIndex];
+            int endRow = didacticWorkerEndRows[workerIndex];
+            int activeEndRow = Math.min(endRow, currentRow + DIDACTIC_WORKER_ROWS_PER_FRAME);
+
+            graphics.setGlobalAlpha(0.18);
+            graphics.setFill(color);
+            fillVisibleRowRange(graphics, startRow, endRow, cellSize);
+
+            graphics.setGlobalAlpha(0.36);
+            graphics.setFill(color);
+            fillVisibleRowRange(graphics, startRow, currentRow, cellSize);
+
+            graphics.setGlobalAlpha(0.58);
+            graphics.setFill(color);
+            fillVisibleRowRange(graphics, currentRow, activeEndRow, cellSize);
+        }
+    }
+
+    private void fillVisibleRowRange(GraphicsContext graphics, int startRow, int endRow, double cellSize) {
+        if (endRow <= startRow) {
+            return;
+        }
+
+        int visibleStartRow = Math.max(startRow, Math.max(0, (int) Math.floor(screenToGridRow(0, cellSize))));
+        int visibleEndRow = Math.min(endRow, Math.min(config.getRows(),
+                (int) Math.ceil(screenToGridRow(canvas.getHeight(), cellSize))));
+        if (visibleEndRow <= visibleStartRow) {
+            return;
+        }
+
+        double originX = gridOriginX(cellSize);
+        double originY = gridOriginY(cellSize);
+        double gridWidth = config.getColumns() * cellSize;
+
+        graphics.fillRect(
+                originX,
+                originY + visibleStartRow * cellSize,
+                gridWidth,
+                (visibleEndRow - visibleStartRow) * cellSize);
     }
 
     private double baseGridCellSize() {
