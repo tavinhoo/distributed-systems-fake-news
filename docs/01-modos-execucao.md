@@ -1,60 +1,60 @@
-# 01 - Modos de Execucao
+# 01 - Modos de Execução
 
-Este documento descreve os tres modos de processamento implementados no projeto: sequencial, paralelo e distribuido com Java RMI. Todos usam o mesmo modelo logico de simulacao e chamam as regras centralizadas em `SimulationRules`.
+Este documento descreve os três modos de processamento implementados no projeto: sequencial, paralelo e distribuído com Java RMI. Todos usam o mesmo modelo lógico de simulação e chamam as regras centralizadas em `SimulationRules`.
 
 ## Base comum
 
-A simulacao trabalha com uma matriz bidimensional de `CellState`. Cada posicao representa uma pessoa ou agente social. A evolucao ocorre por geracoes discretas.
+A simulação trabalha com uma matriz bidimensional de `CellState`. Cada posição representa uma pessoa ou agente social. A evolução ocorre por gerações discretas.
 
-Em cada geracao:
+Em cada geração:
 
-1. A matriz atual e usada apenas para leitura.
-2. O algoritmo calcula o proximo estado de cada celula.
-3. O resultado e escrito em uma segunda matriz.
-4. Ao final da geracao, a matriz calculada passa a ser a matriz atual.
+1. A matriz atual é usada apenas para leitura.
+2. O algoritmo calcula o próximo estado de cada célula.
+3. O resultado é escrito em uma segunda matriz.
+4. Ao final da geração, a matriz calculada passa a ser a matriz atual.
 
-Esse desenho aparece nas tres versoes e evita interferencia dentro da mesma geracao. Uma celula atualizada no inicio da varredura nao altera o resultado de outra celula que ainda sera processada naquela mesma geracao.
+Esse desenho aparece nas três versões e evita interferência dentro da mesma geração. Uma célula atualizada no início da varredura não altera o resultado de outra célula que ainda será processada naquela mesma geração.
 
 ## Sequencial
 
-A versao sequencial esta em `sequential.SequentialSimulation`.
+A versão sequencial está em `sequential.SequentialSimulation`.
 
-Ela percorre todas as linhas e colunas em uma unica thread. Para cada celula, chama `SimulationRules.nextState(...)` e escreve o resultado em `nextGrid`.
+Ela percorre todas as linhas e colunas em uma única thread. Para cada célula, chama `SimulationRules.nextState(...)` e escreve o resultado em `nextGrid`.
 
 Fluxo:
 
-1. Recebe a matriz inicial e a configuracao.
+1. Recebe a matriz inicial e a configuração.
 2. Inicializa um temporizador.
-3. Para cada geracao, percorre a matriz inteira.
-4. Para cada celula, calcula o proximo estado.
+3. Para cada geração, percorre a matriz inteira.
+4. Para cada célula, calcula o próximo estado.
 5. Conta neutralizacoes por influencia de `GROK`.
 6. Troca `currentGrid` e `nextGrid`.
 7. Gera um `SimulationResult` com matriz final, tempo e contagens.
 
 Vantagens:
 
-- Implementacao direta e previsivel.
+- Implementação direta e previsível.
 - Serve como referencia de corretude.
-- Nao possui custo de criacao de threads nem comunicacao remota.
+- Não possui custo de criação de threads nem comunicação remota.
 
-Limitacoes:
+Limitações:
 
 - Usa apenas uma thread.
-- O tempo cresce diretamente com tamanho da matriz e numero de geracoes.
-- Nao aproveita os nucleos disponiveis da CPU.
+- O tempo cresce diretamente com o tamanho da matriz e o número de gerações.
+- Não aproveita os núcleos disponíveis da CPU.
 
 ## Paralela
 
-A versao paralela esta em `parallel.ParallelSimulation` e usa `parallel.MatrixWorker`.
+A versão paralela está em `parallel.ParallelSimulation` e usa `parallel.MatrixWorker`.
 
-Ela divide a matriz por faixas de linhas. Cada worker recebe um intervalo `[startRow, endRow)` e calcula apenas essa parte da matriz. A divisao e feita por:
+Ela divide a matriz por faixas de linhas. Cada worker recebe um intervalo `[startRow, endRow)` e calcula apenas essa parte da matriz. A divisão é feita por:
 
 ```java
 int startRow = index * config.getRows() / threadCount;
 int endRow = (index + 1) * config.getRows() / threadCount;
 ```
 
-Como cada thread escreve em linhas exclusivas de `nextGrid`, nao ha escrita concorrente na mesma celula. Todas as threads leem a mesma matriz `currentGrid`, que nao e modificada durante a geracao.
+Como cada thread escreve em linhas exclusivas de `nextGrid`, não há escrita concorrente na mesma célula. Todas as threads leem a mesma matriz `currentGrid`, que não é modificada durante a geração.
 
 Fluxo:
 
@@ -63,25 +63,25 @@ Fluxo:
 3. Cria um `MatrixWorker` por faixa.
 4. Inicia uma thread para cada worker.
 5. A thread principal aguarda todas terminarem com `join()`.
-6. Soma as estatisticas parciais dos workers.
+6. Soma as estatísticas parciais dos workers.
 7. Troca `currentGrid` e `nextGrid`.
 
 Vantagens:
 
-- Usa multiplos nucleos da maquina.
+- Usa múltiplos núcleos da máquina.
 - Mantem a mesma regra logica da versao sequencial.
-- Evita escrita concorrente na mesma posicao da matriz.
+- Evita escrita concorrente na mesma posição da matriz.
 - Pode obter speedup em matrizes maiores.
 
-Limitacoes:
+Limitações:
 
-- Cria e sincroniza threads a cada geracao.
-- O custo de `join()` e criacao de threads pode reduzir o ganho em matrizes pequenas.
+- Cria e sincroniza threads a cada geração.
+- O custo de `join()` e a criação de threads pode reduzir o ganho em matrizes pequenas.
 - A eficiencia cai quando a quantidade de threads cresce alem do ganho util do problema.
 
-## Distribuida RMI
+## Distribuída RMI
 
-A versao distribuida esta em `distributed.DistributedSimulation` e usa Java RMI. Os principais componentes sao:
+A versão distribuída está em `distributed.DistributedSimulation` e usa Java RMI. Os principais componentes são:
 
 - `WorkerServer`: cria o registry RMI e registra um worker.
 - `MatrixWorkerRemote`: interface remota.
@@ -90,7 +90,7 @@ A versao distribuida esta em `distributed.DistributedSimulation` e usa Java RMI.
 - `WorkerResult`: objeto serializavel devolvido ao coordenador.
 - `DistributedSimulation`: coordenador que divide a matriz, envia tarefas e monta a matriz final.
 
-Cada worker recebe uma faixa de linhas. Para preservar a vizinhanca nas bordas entre faixas, o coordenador inclui linhas fantasmas acima e abaixo quando necessario. O raio maximo de influencia e definido em `SimulationRules.MAX_INFLUENCE_RADIUS`.
+Cada worker recebe uma faixa de linhas. Para preservar a vizinhança nas bordas entre faixas, o coordenador inclui linhas fantasmas acima e abaixo quando necessário. O raio máximo de influência é definido em `SimulationRules.MAX_INFLUENCE_RADIUS`.
 
 Fluxo:
 
@@ -98,35 +98,35 @@ Fluxo:
 2. Para cada worker, monta um `WorkerTask`.
 3. O bloco enviado contem a faixa principal e linhas fantasmas.
 4. O worker remoto executa `computeRange(...)`.
-5. O worker retorna `WorkerResult` com linhas calculadas e estatisticas.
+5. O worker retorna `WorkerResult` com linhas calculadas e estatísticas.
 6. O coordenador espera todos os resultados.
 7. O coordenador remonta `nextGrid`.
-8. A proxima geracao so comeca depois que todos os workers responderam.
+8. A próxima geração só começa depois que todos os workers responderam.
 
 Vantagens:
 
-- Permite distribuir o processamento em processos e maquinas diferentes.
+- Permite distribuir o processamento em processos e máquinas diferentes.
 - Preserva a mesma logica da versao sequencial com linhas fantasmas.
-- Representa a proposta de execucao distribuida exigida pelo projeto.
+- Representa a proposta de execução distribuída exigida pelo projeto.
 
-Limitacoes:
+Limitações:
 
 - Possui custo de serializacao.
 - Possui custo de chamada remota.
-- Transfere blocos da matriz a cada geracao.
-- Pode ser mais lenta que a sequencial quando matriz e geracoes nao compensam o custo de comunicacao.
-- Se um worker remoto demorar, a geracao inteira espera por ele.
+- Transfere blocos da matriz a cada geração.
+- Pode ser mais lenta que a sequencial quando a matriz e as gerações não compensam o custo de comunicação.
+- Se um worker remoto demorar, a geração inteira espera por ele.
 
-## Diferencas principais
+## Diferenças principais
 
-| Modo | Unidade de execucao | Divisao da matriz | Sincronizacao | Custo extra principal |
+| Modo | Unidade de execução | Divisão da matriz | Sincronização | Custo extra principal |
 |---|---:|---|---|---|
-| Sequencial | 1 thread | Nao divide | Nao ha barreira entre workers | Nenhum custo paralelo |
-| Paralela | N threads | Faixas de linhas | `join()` por geracao | Criacao e sincronizacao de threads |
-| Distribuida RMI | N workers RMI | Faixas de linhas com linhas fantasmas | Espera por todos os workers | Serializacao, rede e montagem dos blocos |
+| Sequencial | 1 thread | Não divide | Não há barreira entre workers | Nenhum custo paralelo |
+| Paralela | N threads | Faixas de linhas | `join()` por geração | Criação e sincronização de threads |
+| Distribuída RMI | N workers RMI | Faixas de linhas com linhas fantasmas | Espera por todos os workers | Serialização, rede e montagem dos blocos |
 
 ## Corretude entre modos
 
-O `BenchmarkRunner` compara a matriz final das versoes paralela e distribuida contra a matriz final sequencial. Quando a execucao termina corretamente, o campo `final_grid_match` indica se a matriz final foi igual.
+O `BenchmarkRunner` compara a matriz final das versões paralela e distribuída contra a matriz final sequencial. Quando a execução termina corretamente, o campo `final_grid_match` indica se a matriz final foi igual.
 
-Nos resultados produzidos, as execucoes concluidas registraram `sim` para a igualdade da matriz final.
+Nos resultados produzidos, as execuções concluídas registraram `sim` para a igualdade da matriz final.

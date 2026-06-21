@@ -1,6 +1,6 @@
 # 06 - Melhorias
 
-Este documento consolida as melhorias e extensoes implementadas no projeto, usando a lista levantada a partir de `orientacoes.md`.
+Este documento consolida as melhorias e extensões implementadas no projeto, usando a lista levantada a partir de `orientacoes.md`.
 
 ## Melhorias implementadas
 
@@ -8,34 +8,34 @@ Este documento consolida as melhorias e extensoes implementadas no projeto, usan
 
 Implementado.
 
-O modelo usa uma probabilidade base de propagacao configurada em `SimulationConfig`, mas essa probabilidade e alterada por agentes sociais:
+O modelo usa uma probabilidade base de propagação configurada em `SimulationConfig`, mas essa probabilidade é alterada por agentes sociais:
 
-- `BOT` aumenta a chance de propagacao.
+- `BOT` aumenta a chance de propagação.
 - `INFLUENCER` aumenta a chance com alcance maior.
-- `ECHO_CHAMBER` aumenta a propagacao local.
-- `GROK` reduz a chance de conversao.
-- `FACT_CHECKER` reduz a chance de conversao.
-- `JOURNALIST` reduz a chance de conversao.
+- `ECHO_CHAMBER` aumenta a propagação local.
+- `GROK` reduz a chance de conversão.
+- `FACT_CHECKER` reduz a chance de conversão.
+- `JOURNALIST` reduz a chance de conversão.
 
-A probabilidade final e limitada por `MAX_SPREAD_PROBABILITY`.
+A probabilidade final é limitada por `MAX_SPREAD_PROBABILITY`.
 
 ### Influenciadores digitais
 
 Implementado.
 
-O estado `INFLUENCER` representa perfis de maior alcance. Ele aparece na inicializacao, pode surgir durante a simulacao e influencia celulas em raio maior.
+O estado `INFLUENCER` representa perfis de maior alcance. Ele aparece na inicialização, pode surgir durante a simulação e influencia células em raio maior.
 
 ### Bots automatizados
 
 Implementado.
 
-O estado `BOT` representa contas automatizadas. Bots aumentam a propagacao em regioes com espalhadores e podem virar `INACTIVE` por decadencia.
+O estado `BOT` representa contas automatizadas. Bots aumentam a propagação em regiões com espalhadores e podem virar `INACTIVE` por decadência.
 
-### Resistencia a propagacao
+### Resistência à propagação
 
 Implementado.
 
-O projeto inclui agentes de resistencia:
+O projeto inclui agentes de resistência:
 
 - `GROK`;
 - `FACT_CHECKER`;
@@ -43,81 +43,81 @@ O projeto inclui agentes de resistencia:
 
 Esses agentes reduzem conversoes, neutralizam tentativas ou corrigem espalhadores dependendo da regra.
 
-### Visualizacao grafica
+### Visualização gráfica
 
 Implementado.
 
 A interface `SimulationViewer` usa JavaFX para exibir:
 
-- matriz da simulacao;
+- matriz da simulação;
 - contadores por estado;
 - progresso;
-- grafico de evolucao;
+- gráfico de evolução;
 - resultados finais;
-- selecao de modos de processamento e execucao.
+- seleção de modos de processamento e execução.
 
-### Estatisticas adicionais
+### Estatísticas adicionais
 
 Implementado.
 
 O projeto mede e exibe:
 
 - contagem final por estado;
-- neutralizacoes por `GROK`;
+- neutralizações por `GROK`;
 - tempo total;
 - speedup;
 - eficiencia;
-- unidades de execucao;
+- unidades de execução;
 - validacao da matriz final no benchmark;
-- memoria JVM na interface.
+- memória JVM na interface.
 
-### Otimizacoes computacionais
+### Otimizações computacionais
 
 Implementado.
 
 O projeto inclui:
 
 - processamento paralelo por faixas de linhas;
-- execucao distribuida por faixas de linhas;
-- renderizacao com `Canvas`;
-- agregacao visual de blocos em zoom baixo;
-- modo benchmark separado da animacao.
+- execução distribuída por faixas de linhas;
+- renderização com `Canvas`;
+- agregação visual de blocos em zoom baixo;
+- modo benchmark separado da animação.
 
-### Analise probabilistica
+### Análise probabilística
 
 Implementado.
 
-O modelo usa regras probabilisticas com seed fixa. A aleatoriedade e calculada por `deterministicRandom(...)`, combinando seed, geracao, linha, coluna e identificador de regra. Isso permite repetir resultados com a mesma configuracao.
+O modelo usa regras probabilísticas com seed fixa. A aleatoriedade é calculada por `deterministicRandom(...)`, combinando seed, geração, linha, coluna e identificador de regra. Isso permite repetir resultados com a mesma configuração.
 
 ## Melhorias parcialmente implementadas
 
-### Reducao da comunicacao distribuida
+### Redução da comunicação distribuída
 
 Parcialmente implementado.
 
-A versao distribuida usa faixas de linhas e envia linhas fantasmas apenas para preservar a vizinhanca nas bordas. Isso evita enviar informacao sem relacao com o bloco processado.
+A versão distribuída usa faixas de linhas e envia linhas fantasmas apenas para preservar a vizinhança nas bordas. Isso evita enviar informação sem relação com o bloco processado.
 
-No entanto, ainda ha transferencia de blocos da matriz a cada geracao. Nao ha compressao, envio por delta ou cache distribuido.
+No entanto, ainda há transferência de blocos da matriz a cada geração. Não há compressão, envio por delta ou cache distribuído.
 
-## Melhorias nao implementadas
+## Melhorias não implementadas
 
-### Multiplas fake news simultaneas
+### Múltiplas fake news simultâneas
 
-Nao implementado.
+Não implementado.
 
-O modelo possui uma dinamica principal de fake news. Os demais estados representam agentes de amplificacao, resistencia ou inatividade, mas nao diferentes fake news concorrentes.
+O modelo possui uma dinâmica principal de fake news. Os demais estados representam agentes de amplificação, resistência ou inatividade, mas não diferentes fake news concorrentes.
 
 ### Uso de grafos ou redes sociais
 
-Nao implementado.
+Não implementado.
 
-A estrutura principal continua sendo uma matriz bidimensional com vizinhanca espacial. O projeto nao usa grafo explicito de usuarios ou arestas sociais.
+A estrutura principal continua sendo uma matriz bidimensional com vizinhança espacial. O projeto não usa grafo explícito de usuários ou arestas sociais.
 
 ### Balanceamento dinamico de carga
 
-Nao implementado.
+Não implementado.
 
-A divisao de trabalho e estatica por faixas de linhas. A quantidade de linhas por thread ou worker e definida antes do processamento da geracao.
+A divisão de trabalho é estática por faixas de linhas. A quantidade de linhas por thread ou worker é definida antes do processamento da geração.
 
 ## Lista consolidada
 
@@ -126,18 +126,18 @@ A divisao de trabalho e estatica por faixas de linhas. A quantidade de linhas po
 | Probabilidades diferentes de convencimento | Implementado |
 | Influenciadores digitais | Implementado |
 | Bots automatizados | Implementado |
-| Multiplas fake news simultaneas | Nao implementado |
-| Resistencia a propagacao | Implementado |
-| Uso de grafos/redes sociais | Nao implementado |
-| Balanceamento dinamico de carga | Nao implementado |
-| Visualizacao grafica | Implementado |
-| Estatisticas adicionais | Implementado |
-| Otimizacoes computacionais | Implementado |
-| Reducao da comunicacao distribuida | Parcialmente implementado |
-| Analise probabilistica | Implementado |
+| Múltiplas fake news simultâneas | Não implementado |
+| Resistência à propagação | Implementado |
+| Uso de grafos/redes sociais | Não implementado |
+| Balanceamento dinâmico de carga | Não implementado |
+| Visualização gráfica | Implementado |
+| Estatísticas adicionais | Implementado |
+| Otimizações computacionais | Implementado |
+| Redução da comunicação distribuída | Parcialmente implementado |
+| Análise probabilística | Implementado |
 
-## Justificativa tecnica
+## Justificativa técnica
 
-As melhorias implementadas deixam o modelo mais rico que uma propagacao binaria simples. O projeto diferencia agentes que amplificam a fake news e agentes que reduzem sua propagacao. Tambem separa a parte de processamento da parte visual, permitindo demonstrar a simulacao e medir desempenho sem misturar os custos da animacao.
+As melhorias implementadas deixam o modelo mais rico que uma propagação binária simples. O projeto diferencia agentes que amplificam a fake news e agentes que reduzem sua propagação. Também separa a parte de processamento da parte visual, permitindo demonstrar a simulação e medir desempenho sem misturar os custos da animação.
 
-A implementacao paralela e distribuida permite discutir ganhos e custos de coordenacao. Os resultados mostram que paralelizar ou distribuir nao garante ganho automatico: o tamanho da matriz, o numero de geracoes, a quantidade de unidades e o custo de comunicacao influenciam diretamente o desempenho.
+A implementação paralela e distribuída permite discutir ganhos e custos de coordenação. Os resultados mostram que paralelizar ou distribuir não garante ganho automático: o tamanho da matriz, o número de gerações, a quantidade de unidades e o custo de comunicação influenciam diretamente o desempenho.

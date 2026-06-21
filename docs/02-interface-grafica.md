@@ -1,60 +1,60 @@
-# 02 - Interface Grafica
+# 02 - Interface Gráfica
 
-A interface grafica esta implementada em `app.SimulationViewer` usando JavaFX. Ela foi criada para apresentar a evolucao da simulacao, alternar entre modos de processamento e acompanhar contadores, progresso, grafico e resultados finais.
+A interface gráfica está implementada em `app.SimulationViewer` usando JavaFX. Ela foi criada para apresentar a evolução da simulação, alternar entre modos de processamento e acompanhar contadores, progresso, gráfico e resultados finais.
 
 ## Arquitetura JavaFX
 
-`SimulationViewer` estende `Application`, ponto de entrada padrao de aplicacoes JavaFX. A tela e montada no metodo `start(Stage stage)`.
+`SimulationViewer` estende `Application`, ponto de entrada padrão de aplicações JavaFX. A tela é montada no método `start(Stage stage)`.
 
 Principais estruturas JavaFX usadas:
 
 - `BorderPane`: container principal da tela.
-- `HBox` e `VBox`: organizacao horizontal e vertical.
+- `HBox` e `VBox`: organização horizontal e vertical.
 - `Canvas`: desenho da matriz.
-- `LineChart<Number, Number>`: grafico da evolucao dos estados.
-- `ComboBox`: selecao de modo de processamento e modo de execucao.
-- `TextField`: entrada de enderecos de workers RMI.
+- `LineChart<Number, Number>`: gráfico da evolução dos estados.
+- `ComboBox`: seleção de modo de processamento e modo de execução.
+- `TextField`: entrada de endereços de workers RMI.
 - `Button`: iniciar, passar e reiniciar.
-- `ProgressBar`: progresso da simulacao.
+- `ProgressBar`: progresso da simulação.
 - `Label`: status, contadores e resultados.
-- `Timeline`: execucao visual temporizada.
-- `Task`: execucao em segundo plano no modo benchmark.
+- `Timeline`: execução visual temporizada.
+- `Task`: execução em segundo plano no modo benchmark.
 
 ## Classe `SimulationViewer`
 
-A classe concentra a interface e a orquestracao visual da simulacao.
+A classe concentra a interface e a orquestração visual da simulação.
 
 Constantes relevantes:
 
 - `MODE_SEQUENTIAL`: modo de processamento sequencial.
 - `MODE_PARALLEL`: modo de processamento paralelo.
-- `MODE_DISTRIBUTED`: modo distribuido RMI.
-- `EXECUTION_VISUAL`: execucao visual animada.
-- `EXECUTION_BENCHMARK`: execucao sem renderizar cada geracao.
-- `EXECUTION_DIDACTIC`: visualizacao didatica.
-- `ROWS`, `COLUMNS`, `GENERATIONS`: configuracao usada pela interface.
+- `MODE_DISTRIBUTED`: modo distribuído RMI.
+- `EXECUTION_VISUAL`: execução visual animada.
+- `EXECUTION_BENCHMARK`: execução sem renderizar cada geração.
+- `EXECUTION_DIDACTIC`: visualização didática.
+- `ROWS`, `COLUMNS`, `GENERATIONS`: configuração usada pela interface.
 - `THREADS`: quantidade de threads usada no modo paralelo da interface.
-- `DEFAULT_RMI_WORKERS`: enderecos padrao para o modo distribuido na interface.
+- `DEFAULT_RMI_WORKERS`: endereços padrão para o modo distribuído na interface.
 
 Estado interno relevante:
 
 - `currentGrid`: matriz atual.
-- `generation`: geracao atual.
-- `config`: configuracao da simulacao.
-- `computeElapsedNanos`: tempo gasto em calculo.
-- `totalElapsedNanos`: tempo total percebido pela execucao.
-- `distributedSimulation`: instancia reutilizada da simulacao distribuida.
+- `generation`: geração atual.
+- `config`: configuração da simulação.
+- `computeElapsedNanos`: tempo gasto em cálculo.
+- `totalElapsedNanos`: tempo total percebido pela execução.
+- `distributedSimulation`: instância reutilizada da simulação distribuída.
 - variaveis de zoom e pan da matriz.
-- variaveis especificas da visualizacao didatica.
+- variáveis específicas da visualização didática.
 
 ## Componentes da interface
 
-### Cabecalho
+### Cabeçalho
 
-O cabecalho mostra o titulo, status e controles principais:
+O cabeçalho mostra o título, status e controles principais:
 
-- modo de processamento: `Sequencial`, `Paralela` ou `Distribuida RMI`;
-- modo de execucao: `Visual`, `Benchmark` ou `Visualizacao didatica`;
+- modo de processamento: `Sequencial`, `Paralela` ou `Distribuída RMI`;
+- modo de execução: `Visual`, `Benchmark` ou `Visualização didática`;
 - campo de workers RMI;
 - botoes `Iniciar`, `Passar` e `Reiniciar`.
 
@@ -69,11 +69,11 @@ O painel lateral apresenta:
 - tempo total;
 - tempo medido do algoritmo;
 - unidades usadas;
-- memoria da JVM.
+- memória da JVM.
 
 ### Canvas da matriz
 
-A matriz e desenhada em `Canvas`. Isso evita criar um componente visual para cada celula, o que seria pesado em matrizes grandes.
+A matriz é desenhada em `Canvas`. Isso evita criar um componente visual para cada célula, o que seria pesado em matrizes grandes.
 
 Cada estado possui uma cor:
 
@@ -87,9 +87,9 @@ Cada estado possui uma cor:
 - `JOURNALIST`: ciano.
 - `IGNORANT`: preto.
 
-### Grafico de estados
+### Gráfico de estados
 
-O `LineChart` mostra a evolucao dos estados ao longo das geracoes. Ha uma serie para cada estado:
+O `LineChart` mostra a evolução dos estados ao longo das gerações. Há uma série para cada estado:
 
 - ignorantes;
 - espalhadores;
@@ -101,79 +101,79 @@ O `LineChart` mostra a evolucao dos estados ao longo das geracoes. Ha uma serie 
 - checadores;
 - jornalistas.
 
-## Fluxo de execucao
+## Fluxo de execução
 
-### Reinicio
+### Reinício
 
-O metodo `reset()`:
+O método `reset()`:
 
 1. Cancela benchmark em andamento, se existir.
 2. Para os timelines.
-3. Limpa estado didatico.
+3. Limpa estado didático.
 4. Reinicia contadores e tempos.
 5. Cria uma nova `SimulationConfig`.
 6. Gera a matriz inicial com `GridFactory.createInitialGrid(config)`.
 7. Redesenha a matriz.
-8. Atualiza status e grafico.
+8. Atualiza status e gráfico.
 
-### Passo de simulacao
+### Passo de simulação
 
-O metodo `nextStep()` executa uma geracao quando nao ha benchmark em andamento.
+O método `nextStep()` executa uma geração quando não há benchmark em andamento.
 
 Ele escolhe o modo de processamento:
 
 - sequencial: chama `nextSequentialGeneration()`;
 - paralelo: chama `nextParallelGeneration()`;
-- distribuido: chama `nextDistributedGeneration()`.
+- distribuído: chama `nextDistributedGeneration()`.
 
 Depois atualiza:
 
 - matriz atual;
-- tempo de calculo;
-- geracao;
+- tempo de cálculo;
+- geração;
 - desenho da matriz;
 - status;
-- grafico.
+- gráfico.
 
-### Execucao continua
+### Execução contínua
 
-No modo visual, um `Timeline` chama `nextStep()` periodicamente. O intervalo configurado no codigo e de 180 ms.
+No modo visual, um `Timeline` chama `nextStep()` periodicamente. O intervalo configurado no código é de 180 ms.
 
 ### Benchmark
 
-No modo benchmark, `startBenchmarkRun()` cria uma `Task<BenchmarkOutcome>`. Essa tarefa executa as geracoes em segundo plano e mede o tempo de calculo sem redesenhar a matriz a cada geracao.
+No modo benchmark, `startBenchmarkRun()` cria uma `Task<BenchmarkOutcome>`. Essa tarefa executa as gerações em segundo plano e mede o tempo de cálculo sem redesenhar a matriz a cada geração.
 
 Ao final:
 
 1. Atualiza `currentGrid`.
 2. Atualiza `generation`.
 3. Redesenha a matriz uma vez.
-4. Atualiza status e grafico.
+4. Atualiza status e gráfico.
 5. Mostra resultados finais.
 
 ## Status e resultados
 
 O status indica:
 
-- geracao atual;
-- total de geracoes;
+- geração atual;
+- total de gerações;
 - modo selecionado;
-- tipo de execucao.
+- tipo de execução.
 
 O resultado final exibe:
 
-- modo e tipo de execucao;
+- modo e tipo de execução;
 - tempo visual ou tempo total benchmark;
 - tempo medido do algoritmo;
 - unidades usadas;
-- memoria JVM usada e maxima.
+- memória JVM usada e máxima.
 
-## Visualizacao e navegacao
+## Visualização e navegação
 
 A interface possui zoom e pan na matriz:
 
 - zoom com roda do mouse;
-- arrasto para mover a area visivel;
+- arrasto para mover a área visível;
 - duplo clique para voltar ao zoom inicial.
 
-Quando o zoom esta baixo, a interface usa agregacao de blocos para manter a visualizacao legivel. Quando ha espaco suficiente, desenha celulas individuais.
+Quando o zoom está baixo, a interface usa agregação de blocos para manter a visualização legível. Quando há espaço suficiente, desenha células individuais.
