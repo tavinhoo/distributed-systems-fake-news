@@ -47,7 +47,7 @@ public class SimulationViewer extends Application {
     private static final String EXECUTION_BENCHMARK = "Benchmark";
     private static final String EXECUTION_DIDACTIC = "Visualização didática";
     private static final int ROWS = 1000;
-    private static final int COLUMNS = 1000;
+    private static final int COLUMNS = 500;
     private static final int GENERATIONS = 500;
     private static final int THREADS = 12;
     private static final String DEFAULT_RMI_WORKERS = "127.0.0.1:9100, 127.0.0.1:9101";

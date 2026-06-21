@@ -11,13 +11,14 @@ public class CsvWriter {
 
     public static void writeBenchmarkHeader(String fileName) throws IOException {
         try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
-            writer.println("scenario,version,rows,columns,generations,initial_spreader_rate,units,total_ms,speedup,efficiency,ignorant,spreader,inactive,grok,bot,influencer,echo_chamber,fact_checker,journalist,neutralized_by_grok");
+            writer.println("scenario,version,status,rows,columns,generations,initial_spreader_rate,units,total_ms,speedup,efficiency,final_grid_match,ignorant,spreader,inactive,grok,bot,influencer,echo_chamber,fact_checker,journalist,neutralized_by_grok,error");
         }
     }
 
     public static void appendBenchmarkLine(String fileName,
                                            String scenario,
                                            String version,
+                                           String status,
                                            int rows,
                                            int columns,
                                            int generations,
@@ -26,6 +27,7 @@ public class CsvWriter {
                                            double totalMillis,
                                            double speedup,
                                            double efficiency,
+                                           String finalGridMatch,
                                            int ignorant,
                                            int spreader,
                                            int inactive,
@@ -35,13 +37,29 @@ public class CsvWriter {
                                            int echoChamber,
                                            int factChecker,
                                            int journalist,
-                                           int neutralizedByGrok) throws IOException {
+                                           int neutralizedByGrok,
+                                           String error) throws IOException {
         try (PrintWriter writer = new PrintWriter(new FileWriter(fileName, true))) {
-            writer.printf(Locale.US, "%s,%s,%d,%d,%d,%.4f,%d,%.3f,%.4f,%.4f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d%n",
-                    scenario, version, rows, columns, generations, initialSpreaderRate,
-                    units, totalMillis, speedup, efficiency,
+            writer.printf(Locale.US, "%s,%s,%s,%d,%d,%d,%.4f,%d,%s,%s,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%s%n",
+                    csv(scenario), csv(version), csv(status), rows, columns, generations, initialSpreaderRate,
+                    units, format(totalMillis), format(speedup), format(efficiency), csv(finalGridMatch),
                     ignorant, spreader, inactive, grok, bot, influencer,
-                    echoChamber, factChecker, journalist, neutralizedByGrok);
+                    echoChamber, factChecker, journalist, neutralizedByGrok, csv(error));
         }
+    }
+
+    private static String format(double value) {
+        if (Double.isNaN(value)) {
+            return "";
+        }
+        return String.format(Locale.US, "%.4f", value);
+    }
+
+    private static String csv(String value) {
+        if (value == null || value.isEmpty()) {
+            return "";
+        }
+        String escaped = value.replace("\"", "\"\"");
+        return "\"" + escaped + "\"";
     }
 }
