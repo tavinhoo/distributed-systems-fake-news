@@ -131,6 +131,8 @@ public class BenchmarkRunner {
                         0.015, 0.01, 0.25, 0.50, 42L), new int[]{2, 4, 8}, workerGroups),
                 new Scenario("matriz_180x180", new SimulationConfig(180, 180, 100, 0.02, 0.03,
                         0.015, 0.01, 0.25, 0.50, 42L), new int[]{2, 4, 8}, workerGroups),
+                   new Scenario("matriz_1000x1000", new SimulationConfig(1000, 1000, 100, 0.02, 0.03,
+                       0.015, 0.01, 0.25, 0.50, 42L), new int[]{2, 4, 8}, workerGroups),
                 new Scenario("geracoes_200", new SimulationConfig(80, 80, 200, 0.02, 0.03,
                         0.015, 0.01, 0.25, 0.50, 42L), new int[]{2, 4, 8}, workerGroups),
                 new Scenario("espalhadores_5pct", new SimulationConfig(80, 80, 100, 0.05, 0.03,
