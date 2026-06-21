@@ -52,10 +52,6 @@ As configuracoes principais ficam em `SimulationConfig`:
 
 No cenario padrao, os agentes foram separados em dois grupos. `BOT`, `INFLUENCER` e `ECHO_CHAMBER` cooperam para espalhar e sustentar a fake news. `FACT_CHECKER`, `JOURNALIST` e `GROK` combatem a propagacao, mas com alcance local, baixa probabilidade de sucesso ou risco de perda de influencia. Essa assimetria mantem o cenario pessimista: a propagacao tem mecanismos rapidos de amplificacao, enquanto a correcao atua de forma mais lenta e limitada.
 
-### Como os agentes funcionam
-
-![Legenda dos agentes](src/main/java/assets/agents-and-how-it-works.png)
-
 ## Arquitetura
 
 ```text
