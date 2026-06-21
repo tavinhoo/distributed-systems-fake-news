@@ -7,7 +7,7 @@ Gerado automaticamente em 2026-06-21 17:36:45.
 ## Configuração experimental
 
 - Coordenador: Windows 11, Ryzen 5 7600X, 32 GB RAM 6000 MHz.
-- Worker distribuído: Fedora, Intel i5-12450H, 20 GB RAM 3200 MHz.
+- Workers distribuídos: Fedora, Intel i5-12450H, 20 GB RAM 3200 MHz, Windows 10, Ryzen 3 2200g, 16 GB RAM 2666 MHz.
 - Endereços RMI usados: `[192.168.18.76:9100:worker, 192.168.18.52:9100:worker]`.
 - Modo distribuído medido: RMI remoto.
 - JVM: 25.0.3 - Eclipse Adoptium.
