@@ -188,9 +188,15 @@ public class DistributedSimulation {
     }
 
     private WorkerResult callWorker(WorkerAddress address, WorkerTask task) throws Exception {
-        Registry registry = LocateRegistry.getRegistry(address.host(), address.port());
-        MatrixWorkerRemote worker = (MatrixWorkerRemote) registry.lookup(address.name());
-        return worker.computeRange(task);
+        try {
+            Registry registry = LocateRegistry.getRegistry(address.host(), address.port());
+            MatrixWorkerRemote worker = (MatrixWorkerRemote) registry.lookup(address.name());
+            return worker.computeRange(task);
+        } catch (Exception exception) {
+            throw new IllegalStateException(String.format(
+                    "Falha no worker RMI %s:%d:%s | causa: %s",
+                    address.host(), address.port(), address.name(), rootCauseMessage(exception)), exception);
+        }
     }
 
     private static void log(String format, Object... args) {
@@ -211,14 +217,32 @@ public class DistributedSimulation {
     }
 
     private static WorkerAddress parseWorkerAddress(String value) {
-        String[] parts = value.split(":");
+        String[] parts = value.trim().split(":");
         if (parts.length < 2 || parts.length > 3 || parts[0].isBlank() || parts[1].isBlank()) {
-            throw new IllegalArgumentException("Use host:porta ou host:porta:nome");
+            throw new IllegalArgumentException("Endereco invalido: '" + value + "'. Use host:porta ou host:porta:nome");
+        }
+        int port;
+        try {
+            port = Integer.parseInt(parts[1].trim());
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("Porta invalida em '" + value + "'. Use um numero inteiro.", exception);
+        }
+        if (port <= 0 || port > 65535) {
+            throw new IllegalArgumentException("Porta invalida em '" + value + "'. Use um valor entre 1 e 65535.");
         }
         String name = parts.length == 3 && !parts[2].isBlank()
                 ? parts[2]
                 : WorkerServer.DEFAULT_WORKER_NAME;
-        return new WorkerAddress(parts[0], Integer.parseInt(parts[1]), name);
+        return new WorkerAddress(parts[0].trim(), port, name.trim());
+    }
+
+    private static String rootCauseMessage(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null && current.getCause() != current) {
+            current = current.getCause();
+        }
+        String message = current.getMessage();
+        return message == null || message.isBlank() ? current.getClass().getSimpleName() : message;
     }
 
     public record WorkerAddress(String host, int port, String name) {

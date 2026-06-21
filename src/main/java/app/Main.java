@@ -1,6 +1,8 @@
 package app;
 
 import distributed.DistributedSimulation;
+import distributed.MatrixWorkerImpl;
+import distributed.WorkerServer;
 import core.GridFactory;
 import model.CellState;
 import model.SimulationConfig;
@@ -11,6 +13,9 @@ import util.Timer;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 
 public class Main {
     public static void main(String[] args) throws Exception {
@@ -23,7 +28,26 @@ public class Main {
             int threads = args.length > 1 ? Integer.parseInt(args[1]) : 4;
             result = new ParallelSimulation(threads).run(initialGrid, config);
         } else if ("distributed".equals(mode)) {
-            result = new DistributedSimulation(parseWorkerAddresses(args)).run(initialGrid, config);
+            List<DistributedSimulation.WorkerAddress> addresses = parseWorkerAddresses(args);
+            if (allLocal(addresses)) {
+                List<LocalWorkerHandle> localWorkers = null;
+                try {
+                    if (allWorkersReachable(addresses)) {
+                        result = new DistributedSimulation(addresses).run(initialGrid, config);
+                    } else if (noneWorkersReachable(addresses)) {
+                        localWorkers = startLocalWorkers(addresses);
+                        result = new DistributedSimulation(addresses).run(initialGrid, config);
+                    } else {
+                        throw new IllegalStateException("Os workers locais estao parcialmente ativos. Pare os processos manuais ou deixe todos fechados para permitir o auto-inicio.");
+                    }
+                } finally {
+                    if (localWorkers != null) {
+                        stopLocalWorkers(localWorkers);
+                    }
+                }
+            } else {
+                result = new DistributedSimulation(addresses).run(initialGrid, config);
+            }
         } else {
             result = new SequentialSimulation().run(initialGrid, config);
         }
@@ -58,5 +82,73 @@ public class Main {
             addresses.add(new DistributedSimulation.WorkerAddress(parts[0], Integer.parseInt(parts[1]), name));
         }
         return addresses;
+    }
+
+    private static boolean allLocal(List<DistributedSimulation.WorkerAddress> addresses) {
+        for (DistributedSimulation.WorkerAddress address : addresses) {
+            String host = address.host().trim().toLowerCase();
+            if (!"localhost".equals(host) && !"127.0.0.1".equals(host) && !"::1".equals(host)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean allWorkersReachable(List<DistributedSimulation.WorkerAddress> addresses) {
+        for (DistributedSimulation.WorkerAddress address : addresses) {
+            if (!isWorkerReachable(address)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean noneWorkersReachable(List<DistributedSimulation.WorkerAddress> addresses) {
+        for (DistributedSimulation.WorkerAddress address : addresses) {
+            if (isWorkerReachable(address)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isWorkerReachable(DistributedSimulation.WorkerAddress address) {
+        try {
+            Registry registry = LocateRegistry.getRegistry(address.host(), address.port());
+            registry.lookup(address.name());
+            return true;
+        } catch (Exception exception) {
+            return false;
+        }
+    }
+
+    private static List<LocalWorkerHandle> startLocalWorkers(List<DistributedSimulation.WorkerAddress> addresses) throws Exception {
+        List<LocalWorkerHandle> workers = new ArrayList<>();
+        if (!addresses.isEmpty()) {
+            System.setProperty("java.rmi.server.hostname", addresses.get(0).host());
+        }
+        for (DistributedSimulation.WorkerAddress address : addresses) {
+            Registry registry = LocateRegistry.createRegistry(address.port());
+            MatrixWorkerImpl worker = new MatrixWorkerImpl(address.name(), 0);
+            registry.rebind(address.name(), worker);
+            workers.add(new LocalWorkerHandle(address, registry, worker));
+        }
+        return workers;
+    }
+
+    private static void stopLocalWorkers(List<LocalWorkerHandle> workers) throws Exception {
+        for (LocalWorkerHandle worker : workers) {
+            try {
+                worker.registry().unbind(worker.address().name());
+            } catch (Exception ignored) {
+            }
+            UnicastRemoteObject.unexportObject(worker.remote(), true);
+            UnicastRemoteObject.unexportObject(worker.registry(), true);
+        }
+    }
+
+    private record LocalWorkerHandle(DistributedSimulation.WorkerAddress address,
+                                     Registry registry,
+                                     MatrixWorkerImpl remote) {
     }
 }

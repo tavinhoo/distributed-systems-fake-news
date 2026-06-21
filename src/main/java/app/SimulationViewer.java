@@ -35,6 +35,10 @@ import javafx.util.Duration;
 import model.CellState;
 import model.SimulationConfig;
 
+import java.net.InetAddress;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -117,6 +121,7 @@ public class SimulationViewer extends Application {
     private DistributedSimulation distributedSimulation;
     private String distributedWorkerList;
     private String activeWorkerAddresses;
+    private final List<LocalWorkerHandle> autoStartedWorkers = new ArrayList<>();
     private boolean didacticStepRunning;
     private CellState[][] didacticSourceGrid;
     private CellState[][] didacticNextGrid;
@@ -126,6 +131,11 @@ public class SimulationViewer extends Application {
     private int[] didacticWorkerEndRows = new int[0];
     private int[] didacticWorkerNextRows = new int[0];
     private String[] didacticWorkerLabels = new String[0];
+
+    private record LocalWorkerHandle(DistributedSimulation.WorkerAddress address,
+                                     Registry registry,
+                                     distributed.MatrixWorkerImpl worker) {
+    }
 
     public SimulationViewer() {
         NumberAxis generationAxis = new NumberAxis();
@@ -333,6 +343,7 @@ public class SimulationViewer extends Application {
         }
         timeline.stop();
         didacticTimeline.stop();
+        stopAutomaticWorkers();
         didacticStepRunning = false;
         clearDidacticState();
         generation = 0;
@@ -345,6 +356,8 @@ public class SimulationViewer extends Application {
         activeMode = null;
         activeExecution = null;
         activeWorkerAddresses = null;
+        distributedSimulation = null;
+        distributedWorkerList = null;
         config = new SimulationConfig(ROWS, COLUMNS, GENERATIONS, 0.03, 0.03,
                 0.015, 0.01, 0.25, 0.50, 42L);
         currentGrid = GridFactory.createInitialGrid(config);
@@ -422,6 +435,26 @@ public class SimulationViewer extends Application {
         activeExecution = EXECUTION_BENCHMARK;
         activeWorkerAddresses = workerAddressesField.getText().trim();
         String benchmarkMode = activeMode;
+
+        try {
+            if (MODE_DISTRIBUTED.equals(benchmarkMode)) {
+                prepareDistributedSimulation(activeWorkerAddresses);
+            } else {
+                stopAutomaticWorkers();
+            }
+        } catch (Exception exception) {
+            activeMode = null;
+            activeExecution = null;
+            activeWorkerAddresses = null;
+            statusLabel.setText("Erro: " + exception.getMessage());
+            modeBox.setDisable(false);
+            executionBox.setDisable(false);
+            workerAddressesField.setDisable(false);
+            stepButton.setDisable(false);
+            runButton.setText("Iniciar");
+            return;
+        }
+
         totalElapsedNanos = 0;
         runSegmentStartNanos = System.nanoTime();
         computeElapsedNanos = 0;
@@ -472,6 +505,7 @@ public class SimulationViewer extends Application {
             executionBox.setDisable(false);
             workerAddressesField.setDisable(false);
             stepButton.setDisable(false);
+            stopAutomaticWorkers();
         });
 
         benchmarkTask.setOnCancelled(event -> {
@@ -486,6 +520,7 @@ public class SimulationViewer extends Application {
             executionBox.setDisable(false);
             workerAddressesField.setDisable(false);
             stepButton.setDisable(false);
+            stopAutomaticWorkers();
         });
 
         benchmarkTask.setOnFailed(event -> {
@@ -500,6 +535,7 @@ public class SimulationViewer extends Application {
             executionBox.setDisable(false);
             workerAddressesField.setDisable(false);
             stepButton.setDisable(false);
+            stopAutomaticWorkers();
         });
 
         Thread thread = new Thread(benchmarkTask, "simulation-benchmark");
@@ -514,6 +550,7 @@ public class SimulationViewer extends Application {
         }
         timeline.stop();
         didacticTimeline.stop();
+        stopAutomaticWorkers();
         didacticStepRunning = false;
         clearDidacticState();
         runButton.setText("Iniciar");
@@ -706,6 +743,148 @@ public class SimulationViewer extends Application {
         return DistributedSimulation.parseWorkerAddresses(workerList);
     }
 
+    private void prepareDistributedSimulation(String workerList) throws Exception {
+        List<DistributedSimulation.WorkerAddress> addresses = DistributedSimulation.parseWorkerAddresses(workerList);
+        boolean allLocal = true;
+        int reachableWorkers = 0;
+        DistributedSimulation.WorkerAddress unreachableAddress = null;
+        Exception unreachableCause = null;
+
+        for (DistributedSimulation.WorkerAddress address : addresses) {
+            if (!isLocalWorker(address)) {
+                allLocal = false;
+            }
+
+            Exception probeFailure = probeWorker(address);
+            if (probeFailure == null) {
+                reachableWorkers++;
+            } else if (unreachableAddress == null) {
+                unreachableAddress = address;
+                unreachableCause = probeFailure;
+            }
+        }
+
+        if (allLocal) {
+            if (!autoStartedWorkers.isEmpty() && !autoWorkersMatch(addresses)) {
+                stopAutomaticWorkers();
+            }
+
+            if (reachableWorkers == 0) {
+                startAutomaticWorkers(addresses);
+            } else if (reachableWorkers != addresses.size()) {
+                throw new IllegalStateException(
+                        "Os workers locais estao em estado misto. Pare os processos manuais ou deixe todos fechados para permitir o auto-inicio.");
+            }
+        } else {
+            stopAutomaticWorkers();
+            if (reachableWorkers != addresses.size()) {
+                throw new IllegalStateException(workerUnavailableMessage(
+                        unreachableAddress == null ? addresses.get(0) : unreachableAddress,
+                        unreachableCause));
+            }
+        }
+
+        if (distributedSimulation == null || !workerList.equals(distributedWorkerList)) {
+            distributedSimulation = new DistributedSimulation(addresses);
+            distributedWorkerList = workerList;
+        }
+    }
+
+    private boolean autoWorkersMatch(List<DistributedSimulation.WorkerAddress> addresses) {
+        if (autoStartedWorkers.size() != addresses.size()) {
+            return false;
+        }
+
+        for (int index = 0; index < addresses.size(); index++) {
+            DistributedSimulation.WorkerAddress expected = addresses.get(index);
+            DistributedSimulation.WorkerAddress current = autoStartedWorkers.get(index).address();
+            if (!expected.host().equals(current.host())
+                    || expected.port() != current.port()
+                    || !expected.name().equals(current.name())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void startAutomaticWorkers(List<DistributedSimulation.WorkerAddress> addresses) throws Exception {
+        stopAutomaticWorkers();
+        if (addresses.isEmpty()) {
+            return;
+        }
+
+        System.setProperty("java.rmi.server.hostname", addresses.get(0).host());
+        try {
+            for (DistributedSimulation.WorkerAddress address : addresses) {
+                Registry registry = LocateRegistry.createRegistry(address.port());
+                distributed.MatrixWorkerImpl worker = new distributed.MatrixWorkerImpl(address.name(), 0);
+                registry.rebind(address.name(), worker);
+                autoStartedWorkers.add(new LocalWorkerHandle(address, registry, worker));
+            }
+        } catch (Exception exception) {
+            stopAutomaticWorkers();
+            throw new IllegalStateException("Nao foi possivel iniciar os workers locais automaticamente: "
+                    + rootCauseMessage(exception), exception);
+        }
+    }
+
+    private void stopAutomaticWorkers() {
+        for (LocalWorkerHandle handle : autoStartedWorkers) {
+            try {
+                handle.registry().unbind(handle.address().name());
+            } catch (Exception ignored) {
+            }
+
+            try {
+                UnicastRemoteObject.unexportObject(handle.worker(), true);
+            } catch (Exception ignored) {
+            }
+
+            try {
+                UnicastRemoteObject.unexportObject(handle.registry(), true);
+            } catch (Exception ignored) {
+            }
+        }
+        autoStartedWorkers.clear();
+    }
+
+    private boolean isLocalWorker(DistributedSimulation.WorkerAddress address) {
+        String host = address.host().trim().toLowerCase();
+        return "localhost".equals(host) || "127.0.0.1".equals(host) || "::1".equals(host);
+    }
+
+    private Exception probeWorker(DistributedSimulation.WorkerAddress address) {
+        try {
+            Registry registry = LocateRegistry.getRegistry(address.host(), address.port());
+            registry.lookup(address.name());
+            return null;
+        } catch (Exception exception) {
+            return exception;
+        }
+    }
+
+    private String workerFailureMessage(DistributedSimulation.WorkerAddress address, Throwable cause) {
+        String rootCause = cause == null ? "indisponivel" : rootCauseMessage(cause);
+        return String.format("Falha no worker RMI %s:%d:%s | causa: %s",
+                address.host(), address.port(), address.name(), rootCause);
+    }
+
+    private String workerUnavailableMessage(DistributedSimulation.WorkerAddress address, Throwable cause) {
+        String hint = isLocalWorker(address)
+                ? " Inicie o WorkerServer manualmente ou deixe a GUI iniciar os workers locais automaticamente."
+                : " Inicie o WorkerServer manualmente nessa maquina e verifique firewall/porta.";
+        return workerFailureMessage(address, cause) + hint;
+    }
+
+    private String rootCauseMessage(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null && current.getCause() != current) {
+            current = current.getCause();
+        }
+        String message = current.getMessage();
+        return message == null || message.isBlank() ? current.getClass().getSimpleName() : message;
+    }
+
     private void clearDidacticState() {
         didacticSourceGrid = null;
         didacticNextGrid = null;
@@ -776,12 +955,7 @@ public class SimulationViewer extends Application {
         String workerList = activeWorkerAddresses == null
                 ? workerAddressesField.getText().trim()
                 : activeWorkerAddresses;
-        if (distributedSimulation == null || !workerList.equals(distributedWorkerList)) {
-            List<DistributedSimulation.WorkerAddress> addresses =
-                    DistributedSimulation.parseWorkerAddresses(workerList);
-            distributedSimulation = new DistributedSimulation(addresses);
-            distributedWorkerList = workerList;
-        }
+        prepareDistributedSimulation(workerList);
         return distributedSimulation.nextGeneration(grid, config, generation);
     }
 
@@ -792,6 +966,7 @@ public class SimulationViewer extends Application {
         didacticTimeline.stop();
         didacticStepRunning = false;
         clearDidacticState();
+        stopAutomaticWorkers();
     }
 
     private void drawGrid() {
