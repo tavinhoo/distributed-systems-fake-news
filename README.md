@@ -441,10 +441,6 @@ Tela inicial da interface:
 
 ![Interface grafica no inicio](src/main/java/assets/fake-news-start.png)
 
-Programa em execucao:
-
-![Interface grafica em execucao](src/main/java/assets/fake-news-execution.gif)
-
 ## IntelliJ
 
 Abra a pasta do projeto no IntelliJ e execute:
