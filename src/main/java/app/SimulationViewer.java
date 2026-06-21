@@ -1243,8 +1243,12 @@ public class SimulationViewer extends Application {
     }
 
     private void styleResultLabel(Label label) {
-        label.setWrapText(true);
-        label.setStyle("-fx-font-size: 13px; -fx-text-fill: #1f2937;");
+    label.setWrapText(true);
+    label.setMaxWidth(210);
+    label.setPrefWidth(210);
+    label.setMinHeight(Label.USE_PREF_SIZE);
+    label.setTextOverrun(javafx.scene.control.OverrunStyle.CLIP);
+    label.setStyle("-fx-font-size: 13px; -fx-text-fill: #1f2937;");
     }
 
     private void styleSideBlock(VBox box) {
