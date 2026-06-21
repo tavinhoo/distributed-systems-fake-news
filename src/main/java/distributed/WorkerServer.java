@@ -13,13 +13,19 @@ public class WorkerServer {
             System.setProperty("java.rmi.server.hostname", args[2]);
         }
 
+        log("iniciando WorkerServer | porta=%d | nome=%s", port, workerName);
         Registry registry = LocateRegistry.createRegistry(port);
-        registry.rebind(workerName, new MatrixWorkerImpl(port));
+        registry.rebind(workerName, new MatrixWorkerImpl(workerName, port));
 
-        System.out.printf("Worker RMI aguardando na porta %d com nome '%s'%n", port, workerName);
+        log("MatrixWorker publicado no registry RMI | porta=%d | nome=%s", port, workerName);
         if (args.length > 2) {
-            System.out.println("Host RMI anunciado: " + args[2]);
+            log("host RMI anunciado=%s", args[2]);
         }
         Thread.currentThread().join();
+    }
+
+    private static void log(String format, Object... args) {
+        System.out.printf("[%tT.%<tL] [WorkerServer] %s%n",
+                System.currentTimeMillis(), String.format(format, args));
     }
 }

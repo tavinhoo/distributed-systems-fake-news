@@ -29,6 +29,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import model.CellState;
@@ -124,6 +125,7 @@ public class SimulationViewer extends Application {
     private int[] didacticWorkerStartRows = new int[0];
     private int[] didacticWorkerEndRows = new int[0];
     private int[] didacticWorkerNextRows = new int[0];
+    private String[] didacticWorkerLabels = new String[0];
 
     public SimulationViewer() {
         NumberAxis generationAxis = new NumberAxis();
@@ -660,13 +662,18 @@ public class SimulationViewer extends Application {
             didacticWorkerStartRows = new int[0];
             didacticWorkerEndRows = new int[0];
             didacticWorkerNextRows = new int[0];
+            didacticWorkerLabels = new String[0];
             return;
         }
 
-        didacticWorkerCount = MODE_DISTRIBUTED.equals(mode) ? configuredRmiWorkerCount() : THREADS;
+        List<DistributedSimulation.WorkerAddress> rmiAddresses = MODE_DISTRIBUTED.equals(mode)
+                ? configuredRmiWorkers()
+                : List.of();
+        didacticWorkerCount = MODE_DISTRIBUTED.equals(mode) ? rmiAddresses.size() : THREADS;
         didacticWorkerStartRows = new int[didacticWorkerCount];
         didacticWorkerEndRows = new int[didacticWorkerCount];
         didacticWorkerNextRows = new int[didacticWorkerCount];
+        didacticWorkerLabels = new String[didacticWorkerCount];
 
         for (int workerIndex = 0; workerIndex < didacticWorkerCount; workerIndex++) {
             int startRow = workerIndex * config.getRows() / didacticWorkerCount;
@@ -674,6 +681,9 @@ public class SimulationViewer extends Application {
             didacticWorkerStartRows[workerIndex] = startRow;
             didacticWorkerEndRows[workerIndex] = endRow;
             didacticWorkerNextRows[workerIndex] = startRow;
+            didacticWorkerLabels[workerIndex] = MODE_DISTRIBUTED.equals(mode)
+                    ? "Worker " + (workerIndex + 1) + " | " + rmiAddresses.get(workerIndex)
+                    : "Thread " + (workerIndex + 1);
         }
     }
 
@@ -686,7 +696,14 @@ public class SimulationViewer extends Application {
     }
 
     private int configuredRmiWorkerCount() {
-        return DistributedSimulation.parseWorkerAddresses(workerAddressesField.getText()).size();
+        return configuredRmiWorkers().size();
+    }
+
+    private List<DistributedSimulation.WorkerAddress> configuredRmiWorkers() {
+        String workerList = activeWorkerAddresses == null
+                ? workerAddressesField.getText()
+                : activeWorkerAddresses;
+        return DistributedSimulation.parseWorkerAddresses(workerList);
     }
 
     private void clearDidacticState() {
@@ -697,6 +714,7 @@ public class SimulationViewer extends Application {
         didacticWorkerStartRows = new int[0];
         didacticWorkerEndRows = new int[0];
         didacticWorkerNextRows = new int[0];
+        didacticWorkerLabels = new String[0];
     }
 
     private CellState[][] copyGrid(CellState[][] source) {
@@ -956,6 +974,10 @@ public class SimulationViewer extends Application {
                 Color.web("#f97316")
         };
 
+        if (MODE_DISTRIBUTED.equals(activeMode)) {
+            drawCoordinatorOverlay(graphics, cellSize);
+        }
+
         for (int workerIndex = 0; workerIndex < didacticWorkerCount; workerIndex++) {
             Color color = colors[workerIndex % colors.length];
             int startRow = didacticWorkerStartRows[workerIndex];
@@ -974,7 +996,92 @@ public class SimulationViewer extends Application {
             graphics.setGlobalAlpha(0.58);
             graphics.setFill(color);
             fillVisibleRowRange(graphics, currentRow, activeEndRow, cellSize);
+
+            graphics.setGlobalAlpha(0.95);
+            graphics.setStroke(color);
+            graphics.setLineWidth(2);
+            strokeVisibleRowRange(graphics, startRow, endRow, cellSize);
+
+            drawDidacticWorkerLabel(graphics, workerIndex, color, startRow, currentRow, endRow, cellSize);
         }
+    }
+
+    private void drawCoordinatorOverlay(GraphicsContext graphics, double cellSize) {
+        double originX = gridOriginX(cellSize);
+        double gridWidth = config.getColumns() * cellSize;
+        double x = Math.max(8, originX);
+        double width = Math.min(canvas.getWidth() - x - 8, gridWidth);
+        if (width <= 0) {
+            return;
+        }
+
+        graphics.setGlobalAlpha(0.88);
+        graphics.setFill(Color.web("#0f172a"));
+        graphics.fillRect(x, 8, width, 30);
+        graphics.setStroke(Color.web("#e5e7eb"));
+        graphics.strokeRect(x, 8, width, 30);
+        graphics.setFill(Color.web("#f8fafc"));
+        graphics.setFont(Font.font("Consolas", 12));
+        graphics.fillText("Coordinator -> distribuindo blocos para " + didacticWorkerCount + " workers RMI",
+                x + 10, 28);
+    }
+
+    private void drawDidacticWorkerLabel(GraphicsContext graphics,
+                                         int workerIndex,
+                                         Color color,
+                                         int startRow,
+                                         int currentRow,
+                                         int endRow,
+                                         double cellSize) {
+        int visibleStartRow = Math.max(startRow, Math.max(0, (int) Math.floor(screenToGridRow(0, cellSize))));
+        int visibleEndRow = Math.min(endRow, Math.min(config.getRows(),
+                (int) Math.ceil(screenToGridRow(canvas.getHeight(), cellSize))));
+        if (visibleEndRow <= visibleStartRow) {
+            return;
+        }
+
+        double originX = gridOriginX(cellSize);
+        double originY = gridOriginY(cellSize);
+        double x = Math.max(10, originX + 10);
+        double y = originY + visibleStartRow * cellSize + 18;
+        y = Math.max(52, Math.min(canvas.getHeight() - 12, y));
+        String label = didacticWorkerLabels.length > workerIndex
+                ? didacticWorkerLabels[workerIndex]
+                : "Worker " + (workerIndex + 1);
+        String progress = String.format("linhas [%d,%d) | atual %d/%d",
+                startRow, endRow, Math.min(currentRow, endRow), endRow);
+
+        graphics.setGlobalAlpha(0.88);
+        graphics.setFill(Color.web("#020617"));
+        graphics.fillRect(x - 6, y - 15, 330, 36);
+        graphics.setStroke(color);
+        graphics.strokeRect(x - 6, y - 15, 330, 36);
+        graphics.setFill(Color.web("#f8fafc"));
+        graphics.setFont(Font.font("Consolas", 11));
+        graphics.fillText(label, x, y);
+        graphics.setFill(Color.web("#cbd5e1"));
+        graphics.fillText(progress, x, y + 14);
+    }
+
+    private void strokeVisibleRowRange(GraphicsContext graphics, int startRow, int endRow, double cellSize) {
+        if (endRow <= startRow) {
+            return;
+        }
+
+        int visibleStartRow = Math.max(startRow, Math.max(0, (int) Math.floor(screenToGridRow(0, cellSize))));
+        int visibleEndRow = Math.min(endRow, Math.min(config.getRows(),
+                (int) Math.ceil(screenToGridRow(canvas.getHeight(), cellSize))));
+        if (visibleEndRow <= visibleStartRow) {
+            return;
+        }
+
+        double originX = gridOriginX(cellSize);
+        double originY = gridOriginY(cellSize);
+        graphics.strokeRect(
+                originX,
+                originY + visibleStartRow * cellSize,
+                config.getColumns() * cellSize,
+                (visibleEndRow - visibleStartRow) * cellSize);
     }
 
     private void fillVisibleRowRange(GraphicsContext graphics, int startRow, int endRow, double cellSize) {

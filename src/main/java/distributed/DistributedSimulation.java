@@ -123,10 +123,24 @@ public class DistributedSimulation {
             int endRow = (workerIndex + 1) * config.getRows() / workerAddresses.size();
             WorkerTask task = createTask(currentGrid, config, generation, startRow, endRow);
             WorkerAddress address = workerAddresses.get(workerIndex);
+            int assignedWorkerIndex = workerIndex;
+
+            log("geração %d | enviando bloco ao worker %d %s | linhas [%d, %d)",
+                    generation, assignedWorkerIndex + 1, address, startRow, endRow);
 
             Thread thread = new Thread(() -> {
                 try {
+                    long callStartNanos = System.nanoTime();
                     WorkerResult result = callWorker(address, task);
+                    long roundTripNanos = System.nanoTime() - callStartNanos;
+                    log("geração %d | resposta recebida do worker %d %s | linhas [%d, %d) | processamento worker=%.3f ms | ida/volta=%.3f ms",
+                            generation,
+                            assignedWorkerIndex + 1,
+                            address,
+                            result.getStartRow(),
+                            result.getStartRow() + result.getComputedRows().length,
+                            result.getProcessingNanos() / 1_000_000.0,
+                            roundTripNanos / 1_000_000.0);
                     synchronized (lock) {
                         results.add(result);
                     }
@@ -179,6 +193,11 @@ public class DistributedSimulation {
         return worker.computeRange(task);
     }
 
+    private static void log(String format, Object... args) {
+        System.out.printf("[%tT.%<tL] [Coordinator] %s%n",
+                System.currentTimeMillis(), String.format(format, args));
+    }
+
     private static List<WorkerAddress> parseAddresses(String[] args) {
         if (args.length == 0) {
             return localWorkers(2, 9100);
@@ -203,5 +222,9 @@ public class DistributedSimulation {
     }
 
     public record WorkerAddress(String host, int port, String name) {
+        @Override
+        public String toString() {
+            return host + ":" + port + ":" + name;
+        }
     }
 }
