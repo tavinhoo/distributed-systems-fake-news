@@ -8,13 +8,13 @@ O projeto possui tres formas de processamento: sequencial, paralela com threads 
 
 ## Indice da documentação
 
-- [01 - Modos de execução](docs/01-modos-execução.md)  
+- [01 - Modos de execução](docs/01-modos-execucao.md)  
   Explica as versoes sequencial, paralela e distribuída RMI, incluindo divisão da matriz, fluxo de processamento, vantagens, limitacoes e diferencas tecnicas.
 
-- [02 - Interface gráfica](docs/02-interface-gráfica.md)  
+- [02 - Interface gráfica](docs/02-interface-grafica.md)  
   Descreve a arquitetura JavaFX, a classe `SimulationViewer`, os componentes da interface, o fluxo de execução, os graficos, os indicadores de status e a visualização da matriz.
 
-- [03 - Modos de visualização](docs/03-modos-visualização.md)  
+- [03 - Modos de visualização](docs/03-modos-visualizacao.md)  
   Detalha os modos `Visual`, `Benchmark` e `Visualização didática`, explicando o objetivo e o funcionamento de cada um.
 
 - [04 - Agentes](docs/04-agentes.md)  
