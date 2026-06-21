@@ -2,15 +2,15 @@
 
 Este documento descreve os estados e agentes do modelo, com base em `model.CellState`, `core.GridFactory`, `core.SimulationRules`, `core.Statistics` e `model.SimulationConfig`.
 
-## Estados basicos
+## Estados básicos
 
 ### `IGNORANT`
 
-Representa uma pessoa que ainda nao recebeu ou nao acredita na fake news.
+Representa uma pessoa que ainda não recebeu ou não acredita na fake news.
 
-Pode virar `SPREADER` quando ha influencia suficiente na vizinhanca. A probabilidade base vem de `SimulationConfig.getSpreadProbability()`.
+Pode virar `SPREADER` quando há influência suficiente na vizinhança. A probabilidade base vem de `SimulationConfig.getSpreadProbability()`.
 
-Tambem pode virar um agente de amplificacao quando existe um vizinho `SPREADER` e as probabilidades especificas de criacao sao satisfeitas.
+Também pode virar um agente de amplificação quando existe um vizinho `SPREADER` e as probabilidades específicas de criação são satisfeitas.
 
 ### `SPREADER`
 
@@ -21,18 +21,18 @@ Pode:
 - continuar como `SPREADER`;
 - virar `INACTIVE` pela probabilidade de inatividade;
 - virar `GROK` em caso raro de reabilitacao por influencia de `GROK`;
-- virar `INACTIVE` por correcao de `JOURNALIST`;
-- virar `INACTIVE` por correcao de `FACT_CHECKER`.
+- virar `INACTIVE` por correção de `JOURNALIST`;
+- virar `INACTIVE` por correção de `FACT_CHECKER`.
 
 Quando esta perto de `ECHO_CHAMBER`, sua probabilidade de virar `INACTIVE` e reduzida.
 
 ### `INACTIVE`
 
-Representa uma pessoa que recebeu a informacao, mas nao compartilha mais.
+Representa uma pessoa que recebeu a informação, mas não compartilha mais.
 
-No codigo atual, `INACTIVE` permanece `INACTIVE`.
+No código atual, `INACTIVE` permanece `INACTIVE`.
 
-## Agentes de amplificacao
+## Agentes de amplificação
 
 ### `BOT`
 
@@ -40,10 +40,10 @@ Representa uma conta automatizada.
 
 Efeitos:
 
-- aumenta a probabilidade de propagacao com `BOT_SPREAD_BONUS`;
-- influencia em raio curto quando ha tambem `SPREADER` em raio maior;
-- pode surgir em regioes com espalhadores;
-- pode virar `INACTIVE` por decadencia.
+- aumenta a probabilidade de propagação com `BOT_SPREAD_BONUS`;
+- influencia em raio curto quando há também `SPREADER` em raio maior;
+- pode surgir em regiões com espalhadores;
+- pode virar `INACTIVE` por decadência.
 
 Parametros no codigo:
 
@@ -57,10 +57,10 @@ Representa um perfil de grande alcance.
 
 Efeitos:
 
-- aumenta a probabilidade de propagacao com bonus maior que o bot;
+- aumenta a probabilidade de propagação com bônus maior que o bot;
 - influencia em raio maior;
-- pode surgir em regioes com espalhadores;
-- pode perder relevancia e virar `INACTIVE`.
+- pode surgir em regiões com espalhadores;
+- pode perder relevância e virar `INACTIVE`.
 
 Parametros no codigo:
 
@@ -70,14 +70,14 @@ Parametros no codigo:
 
 ### `ECHO_CHAMBER`
 
-Representa uma bolha social que reforca a fake news localmente.
+Representa uma bolha social que reforça a fake news localmente.
 
 Efeitos:
 
-- aumenta a probabilidade de propagacao com `ECHO_CHAMBER_SPREAD_BONUS`;
+- aumenta a probabilidade de propagação com `ECHO_CHAMBER_SPREAD_BONUS`;
 - reduz a chance de um `SPREADER` virar `INACTIVE`;
-- pode surgir em regioes com espalhadores;
-- pode virar `INACTIVE` por decadencia.
+- pode surgir em regiões com espalhadores;
+- pode virar `INACTIVE` por decadência.
 
 Parametros no codigo:
 
@@ -85,7 +85,7 @@ Parametros no codigo:
 - `ECHO_CHAMBER_DECAY_PROBABILITY = 0.003`;
 - `ECHO_CHAMBER_CREATION_PROBABILITY = 0.003`.
 
-## Agentes de resistencia e correcao
+## Agentes de resistência e correção
 
 ### `GROK`
 
@@ -93,7 +93,7 @@ Representa uma IA verificadora.
 
 Efeitos:
 
-- reduz a probabilidade de propagacao de celulas proximas pelo fator configurado em `SimulationConfig`;
+- reduz a probabilidade de propagação de células próximas pelo fator configurado em `SimulationConfig`;
 - pode neutralizar tentativa de convencimento de `IGNORANT`;
 - pode reabilitar um `SPREADER` para `GROK` com probabilidade baixa;
 - pode ser corrompido e virar `SPREADER` quando exposto a espalhadores.
@@ -111,10 +111,10 @@ Representa checadores de fatos.
 
 Efeitos:
 
-- reduz a probabilidade de propagacao local;
+- reduz a probabilidade de propagação local;
 - pode neutralizar tentativa de convencimento;
 - pode corrigir um `SPREADER`, transformando-o em `INACTIVE`;
-- pode perder atuacao e virar `INACTIVE`.
+- pode perder atuação e virar `INACTIVE`.
 
 Parametros no codigo:
 
@@ -125,13 +125,13 @@ Parametros no codigo:
 
 ### `JOURNALIST`
 
-Representa um agente jornalistico local.
+Representa um agente jornalístico local.
 
 Efeitos:
 
-- reduz a probabilidade de propagacao local;
+- reduz a probabilidade de propagação local;
 - pode corrigir um `SPREADER`, transformando-o em `INACTIVE`;
-- pode perder atuacao e virar `INACTIVE`.
+- pode perder atuação e virar `INACTIVE`.
 
 Parametros no codigo:
 
@@ -139,34 +139,34 @@ Parametros no codigo:
 - `JOURNALIST_DECAY_PROBABILITY = 0.004`;
 - `JOURNALIST_CORRECTION_PROBABILITY = 0.004`.
 
-## Calculo da propagacao
+## Cálculo da propagação
 
-A probabilidade de propagacao e calculada em `SimulationRules.spreadProbability(...)`.
+A probabilidade de propagação é calculada em `SimulationRules.spreadProbability(...)`.
 
-Ela parte da probabilidade base de `SimulationConfig` e e ajustada por:
+Ela parte da probabilidade base de `SimulationConfig` e é ajustada por:
 
 - bonus de `BOT`;
 - bonus de `INFLUENCER`;
 - bonus de `ECHO_CHAMBER`;
-- reducao por `GROK`;
-- reducao por `FACT_CHECKER`;
-- reducao por `JOURNALIST`.
+- redução por `GROK`;
+- redução por `FACT_CHECKER`;
+- redução por `JOURNALIST`.
 
-A probabilidade final e limitada por `MAX_SPREAD_PROBABILITY = 0.27`.
+A probabilidade final é limitada por `MAX_SPREAD_PROBABILITY = 0.27`.
 
-## Aleatoriedade deterministica
+## Aleatoriedade determinística
 
 As regras usam `deterministicRandom(...)`, que combina:
 
 - seed;
-- geracao;
+- geração;
 - linha;
 - coluna;
 - identificador da regra.
 
-Isso permite repetir os mesmos resultados quando a configuracao e a matriz inicial sao iguais. Tambem ajuda a preservar o comportamento entre execucoes sequenciais, paralelas e distribuidas.
+Isso permite repetir os mesmos resultados quando a configuração e a matriz inicial são iguais. Também ajuda a preservar o comportamento entre execuções sequenciais, paralelas e distribuídas.
 
-## Inicializacao
+## Inicialização
 
 `GridFactory.createInitialGrid(config)` cria a matriz inicial com base nas porcentagens de `SimulationConfig`:
 
@@ -178,9 +178,9 @@ Isso permite repetir os mesmos resultados quando a configuracao e a matriz inici
 - checadores;
 - jornalistas.
 
-As demais celulas ficam como `IGNORANT`.
+As demais células ficam como `IGNORANT`.
 
-## Estatisticas
+## Estatísticas
 
 `Statistics.buildResult(...)` percorre a matriz final e conta:
 
@@ -193,4 +193,4 @@ As demais celulas ficam como `IGNORANT`.
 - bolhas;
 - checadores;
 - jornalistas;
-- neutralizacoes por `GROK`.
+- neutralizações por `GROK`.
